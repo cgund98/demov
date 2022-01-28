@@ -73,10 +73,11 @@ const readParams = (event: APIGatewayProxyEventV2): QParams => {
 export const handler: APIGatewayProxyHandlerV2 = async (
   event: APIGatewayProxyEventV2,
 ): Promise<APIGatewayProxyResultV2> => {
-  // Check for query parameters
+  // Validate query parameters
   const validation = validateParams(event);
   if (validation !== '') return httpError(400, validation);
 
+  // Load query parameters
   const {genre, ratingTrunc, minYear, maxYear} = readParams(event);
 
   try {

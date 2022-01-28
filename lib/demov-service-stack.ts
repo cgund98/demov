@@ -10,6 +10,8 @@ import {SqsEventSource} from '@aws-cdk/aws-lambda-event-sources';
 import * as cdk from '@aws-cdk/core';
 import * as path from 'path';
 
+import {envSpecific} from '../src/util/env';
+
 export class DemovServiceStack extends cdk.Stack {
   constructor(scope: cdk.App, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
@@ -25,7 +27,7 @@ export class DemovServiceStack extends cdk.Stack {
     );
 
     /** S3 Bucket  */
-    const bucket = new s3.Bucket(this, 'demov-public', {
+    const bucket = new s3.Bucket(this, envSpecific('demov-public'), {
       publicReadAccess: true,
     });
 
@@ -58,7 +60,6 @@ export class DemovServiceStack extends cdk.Stack {
     const api = new apigateway.RestApi(this, 'demov-api', {
       description: 'Primary API gateway for demov application',
       deployOptions: {
-        stageName: 'dev',
         tracingEnabled: true,
         dataTraceEnabled: true,
       },

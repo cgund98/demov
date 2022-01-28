@@ -11,7 +11,8 @@
     "cdk": "cdk",
     "type-check": "tsc --project tsconfig.json --pretty --noEmit",
     "lint": "eslint . --ext js,jsx,ts,tsx --fix",
-    "prettier-format": "prettier --config .prettierrc 'src/**/*.ts' --write"
+    "prettier-format": "prettier --config .prettierrc 'src/**/*.ts' --write",
+    "prettier-check": "prettier --config .prettierrc 'src/**/*.ts' --check"
   },
   "dependencies": {
     "@aws-cdk/assert": "1.100.0",
