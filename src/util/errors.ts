@@ -1,12 +1,11 @@
 import {APIGatewayProxyResultV2} from 'aws-lambda';
 
 /**
- * NotFound exception is thrown when an object cannot be found
- * for it's given id.
+ * NotFound exception is thrown when an object cannot be found.
  */
 export class NotFound extends Error {
-  constructor(id: string) {
-    const msg = `No object could be found for given ID: '${id}'`;
+  constructor(value: string, field = 'ID') {
+    const msg = `No object could be found for given ${field}: '${value}'`;
     super(msg);
 
     // set prototype excplicitly
@@ -18,8 +17,8 @@ export class NotFound extends Error {
  * httpError generates an API HTTP error response.
  */
 export const httpError = (
-  code: number,
-  message: string,
+  code = 500,
+  message = 'Internal Server Error',
 ): APIGatewayProxyResultV2 => ({
   statusCode: code,
   body: JSON.stringify({message}),

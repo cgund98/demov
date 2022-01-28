@@ -9,6 +9,7 @@ export interface Movie {
   year: number;
   title: string;
   director: string;
+  genres: string;
   stars: string;
   runtime: string;
   ratings: {
@@ -26,6 +27,7 @@ export interface Movie {
 export interface DynamoMovie extends DynamoEntity {
   title: string;
   director: string;
+  genres: string;
   stars: string;
   runtime: string;
   ratings: {

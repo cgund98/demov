@@ -34,6 +34,7 @@ export class DemovServiceStack extends cdk.Stack {
     const table = new dynamodb.Table(this, 'demov-base', {
       partitionKey: {name: 'pk', type: dynamodb.AttributeType.STRING},
       sortKey: {name: 'sk', type: dynamodb.AttributeType.STRING},
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
     });
 
     table.addGlobalSecondaryIndex({
@@ -150,6 +151,47 @@ export class DemovServiceStack extends cdk.Stack {
 
     table.grantReadData(getMovieImdbLambda);
 
+    // createMovieGroup
+    const createMovieGroupsLambda = new NodejsFunction(
+      this,
+      'create-movie-groups',
+      {
+        timeout: cdk.Duration.seconds(60),
+        memorySize: 512,
+        runtime: lambda.Runtime.NODEJS_14_X,
+        handler: 'handler',
+        entry: path.join(__dirname, `/../src/lambda/createMovieGroups.ts`),
+        bundling: {
+          minify: true,
+          externalModules: ['aws-sdk'],
+        },
+        environment: {
+          DYNAMO_TABLE: table.tableName,
+        },
+        tracing: lambda.Tracing.ACTIVE,
+      },
+    );
+
+    table.grantReadWriteData(createMovieGroupsLambda);
+
+    // getMovieByImdbId
+    const getMovieGroupLambda = new NodejsFunction(this, 'get-movie-group', {
+      timeout: cdk.Duration.seconds(5),
+      runtime: lambda.Runtime.NODEJS_14_X,
+      handler: 'handler',
+      entry: path.join(__dirname, `/../src/lambda/getMovieGroup.ts`),
+      bundling: {
+        minify: true,
+        externalModules: ['aws-sdk'],
+      },
+      environment: {
+        DYNAMO_TABLE: table.tableName,
+      },
+      tracing: lambda.Tracing.ACTIVE,
+    });
+
+    table.grantReadData(getMovieGroupLambda);
+
     // Integrate lambdas with Lambda
     const movies = api.root.addResource('movies');
     const movie = movies.addResource('{movieId}');
@@ -158,5 +200,12 @@ export class DemovServiceStack extends cdk.Stack {
     const imdbs = api.root.addResource('imdb');
     const imdb = imdbs.addResource('{imdbId}');
     imdb.addMethod('GET', new apigateway.LambdaIntegration(getMovieImdbLambda));
+
+    const groups = api.root.addResource('groups');
+    const movieGroups = groups.addResource('movies');
+    movieGroups.addMethod(
+      'GET',
+      new apigateway.LambdaIntegration(getMovieGroupLambda),
+    );
   }
 }

@@ -1,9 +1,10 @@
+import {Mapper} from '../mapper';
 import {Movie, DynamoMovie} from './entity';
 
 /**
  * MovieMapper maps movie objects between state store and logical formats.
  */
-export class MovieMapper {
+export const MovieMapper: Mapper<Movie, DynamoMovie> = class {
   // Convert to state store format
   public static toDB(movie: Movie): DynamoMovie {
     return {
@@ -12,6 +13,7 @@ export class MovieMapper {
       sk2: movie.year,
       title: movie.title,
       director: movie.director,
+      genres: movie.genres,
       stars: movie.stars,
       imageUrlHR: movie.imageUrlHR,
       imageUrlLR: movie.imageUrlLR,
@@ -30,6 +32,7 @@ export class MovieMapper {
       ratings: dyMovie.ratings,
       title: dyMovie.title,
       director: dyMovie.director,
+      genres: dyMovie.genres,
       stars: dyMovie.stars,
       imageUrlHR: dyMovie.imageUrlHR,
       imageUrlLR: dyMovie.imageUrlLR,
@@ -37,4 +40,4 @@ export class MovieMapper {
       plot: dyMovie.plot,
     };
   }
-}
+};

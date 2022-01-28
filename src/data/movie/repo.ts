@@ -6,17 +6,11 @@ import {MovieMapper} from './mapper';
 import {DYNAMO_TABLE} from '../../util/config';
 import {NotFound} from '../../util/errors';
 
-/** Options to specify when attempting to fetch a random movie */
-export interface RandomMovieOpts {
-  minReleaseDate: Date | null;
-  minRating: number | null;
-}
-
 /** This interface extends the base repo interface and will be implemented by our movies repository */
 interface IMoviesRepo extends Repo<Movie> {
   getMovieById(movieId: string): Promise<Movie>;
   getMovieByImdbId(movieId: string): Promise<Movie>;
-  getRandomMovie(opts: RandomMovieOpts): Promise<Movie>;
+  getMoviesByYear(year: number): Promise<Movie[]>;
 }
 
 /** The movies repository persists and fetches objects from our state store */
@@ -109,8 +103,30 @@ export default class MoviesRepo implements IMoviesRepo {
     return MovieMapper.fromDB(data.Items[0] as DynamoMovie);
   }
 
-  // Get a random movie from DB
-  public async getRandomMovie(opts: RandomMovieOpts): Promise<Movie> {
-    throw new Error('Not yet implemeneted');
+  // Get a list of movies for a given year
+  public async getMoviesByYear(year: number): Promise<Movie[]> {
+    // Query DB
+    const params = {
+      TableName: DYNAMO_TABLE,
+      IndexName: 'GSI-1',
+      FilterExpression: 'begins_with(sk, :beginsk) AND sk2 = :year',
+      ExpressionAttributeValues: {
+        ':beginsk': 'imdb#',
+        ':year': year,
+      },
+      KeyConditionExpression: 'sk = :id',
+    };
+
+    const data = await this.dynamodb.scan(params).promise();
+
+    // If items are undefined, throw error.
+    if (data.Items === undefined) throw new NotFound(String(year), 'year');
+
+    // Map from DB format
+    const movies = data.Items?.map(item =>
+      MovieMapper.fromDB(item as DynamoMovie),
+    );
+
+    return movies;
   }
 }

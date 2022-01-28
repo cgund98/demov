@@ -35,6 +35,7 @@ interface Output {
   year: number;
   title: string;
   director: string;
+  genres: string;
   stars: string;
   runtime: string;
   ratings: {
@@ -53,6 +54,7 @@ interface ImageOuts {
 
 interface MetadataOuts {
   director: string;
+  genres: string;
   stars: string;
   runtime: string;
   ratings: {
@@ -121,6 +123,7 @@ const scrapeMetadata = async (imdbId: string): Promise<MetadataOuts> => {
 
   const output = {
     director: data.Director,
+    genres: data.Genre,
     stars: data.Actors,
     runtime: data.Runtime,
     ratings: {
