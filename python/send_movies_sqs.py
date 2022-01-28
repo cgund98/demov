@@ -8,7 +8,8 @@ import boto3
 import click
 
 # Create SQS client
-sqs = boto3.client('sqs')
+sqs = boto3.client("sqs")
+
 
 def load_movies(path: str) -> pd.DataFrame:
     """Load the dataframe from file system"""
@@ -16,10 +17,13 @@ def load_movies(path: str) -> pd.DataFrame:
     df = pd.read_csv(f"{path}/movies.csv")
     return df
 
+
 def send_movie(movie: dict, queue_url: str) -> None:
     """Send a movie on the SQS queue"""
     # Format message
-    data = dict(imdbId=movie["titleId"], title=movie["primaryTitle"], year=movie["startYear"])
+    data = dict(
+        imdbId=movie["titleId"], title=movie["primaryTitle"], year=movie["startYear"]
+    )
 
     # Send message
     sqs.send_message(
@@ -27,6 +31,7 @@ def send_movie(movie: dict, queue_url: str) -> None:
         DelaySeconds=5,
         MessageBody=json.dumps(data),
     )
+
 
 @click.command()
 @click.option("--queue", help="URL of the SQS queue")
@@ -40,13 +45,13 @@ def main(queue: str, path: str):
 
     # Send
     click.echo("Sending messages")
-    for i, movie in enumerate(df.iterrows()):
+    for i, movie in df.iterrows():
         send_movie(movie, queue)
 
         if i % 100 == 0:
             click.echo(f"Sent {i}/{len(df)} messages.")
 
 
- # Entrypoint
+# Entrypoint
 if __name__ == "__main__":
     main()

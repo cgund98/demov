@@ -4,6 +4,7 @@ import {Repo} from '../repo';
 import {DynamoMovie, Movie} from './entity';
 import {MovieMapper} from './mapper';
 import {DYNAMO_TABLE} from '../../util/config';
+import {NotFound} from '../../util/errors';
 
 /** Options to specify when attempting to fetch a random movie */
 export interface RandomMovieOpts {
@@ -14,6 +15,7 @@ export interface RandomMovieOpts {
 /** This interface extends the base repo interface and will be implemented by our movies repository */
 interface IMoviesRepo extends Repo<Movie> {
   getMovieById(movieId: string): Promise<Movie>;
+  getMovieByImdbId(movieId: string): Promise<Movie>;
   getRandomMovie(opts: RandomMovieOpts): Promise<Movie>;
 }
 
@@ -42,10 +44,12 @@ export default class MoviesRepo implements IMoviesRepo {
       Key: {
         pk: `movie#${movie.movieId}`,
       },
+      Limit: 1,
     };
 
-    await this.dynamodb.get(params).promise();
-    return true;
+    const data = await this.dynamodb.query(params).promise();
+
+    return data.Count === 0;
   }
 
   // Delete a movie from DB
@@ -65,15 +69,44 @@ export default class MoviesRepo implements IMoviesRepo {
     // Query DB
     const params = {
       TableName: DYNAMO_TABLE,
-      Key: {
-        pk: `movie#${movieId}`,
+      ExpressionAttributeValues: {
+        ':id': `movie#${movieId}`,
       },
+      KeyConditionExpression: 'pk = :id',
+      Limit: 1,
     };
 
-    const data = await this.dynamodb.get(params).promise();
+    const data = await this.dynamodb.query(params).promise();
+
+    // Throw error if no movie found
+    if (data.Items === undefined || data.Count === 0)
+      throw new NotFound(movieId);
 
     // Map from DB format
-    return MovieMapper.fromDB(data.Item as DynamoMovie);
+    return MovieMapper.fromDB(data.Items[0] as DynamoMovie);
+  }
+
+  // Get a movie by its IMDb ID from DB
+  public async getMovieByImdbId(imdbId: string): Promise<Movie> {
+    // Query DB
+    const params = {
+      TableName: DYNAMO_TABLE,
+      IndexName: 'GSI-1',
+      ExpressionAttributeValues: {
+        ':id': `imdb#${imdbId}`,
+      },
+      KeyConditionExpression: 'sk = :id',
+      Limit: 1,
+    };
+
+    const data = await this.dynamodb.query(params).promise();
+
+    // Throw error if no movie found
+    if (data.Items === undefined || data.Count === 0)
+      throw new NotFound(imdbId);
+
+    // Map from DB format
+    return MovieMapper.fromDB(data.Items[0] as DynamoMovie);
   }
 
   // Get a random movie from DB

@@ -12,12 +12,25 @@ MIN_RATING_COUNT = 100000
 
 # Preprocessing methods
 
+
 def load_title_basics(path: str) -> pd.DataFrame:
     """Load and preprocess the 'title.basics.tsv' file"""
 
     # Load
     click.echo("Loading title basics...")
-    basics_df: pd.DataFrame = pd.read_csv(f"{path}/title.basics.tsv", sep="\t", usecols=["tconst", "titleType", "primaryTitle", "startYear", "runtimeMinutes", "genres"], low_memory=False)
+    basics_df: pd.DataFrame = pd.read_csv(
+        f"{path}/title.basics.tsv",
+        sep="\t",
+        usecols=[
+            "tconst",
+            "titleType",
+            "primaryTitle",
+            "startYear",
+            "runtimeMinutes",
+            "genres",
+        ],
+        low_memory=False,
+    )
     basics_df.rename(columns={"tconst": "titleId"}, inplace=True)
 
     # Filter
@@ -34,12 +47,19 @@ def load_title_akas(path: str) -> pd.DataFrame:
 
     # Load
     click.echo("Loading title akas...")
-    akas_df = pd.read_csv(f"{path}/title.akas.tsv", sep="\t", usecols=["titleId", "region",])
+    akas_df = pd.read_csv(
+        f"{path}/title.akas.tsv",
+        sep="\t",
+        usecols=[
+            "titleId",
+            "region",
+        ],
+    )
 
     # Filter
     click.echo("Processing title akas...")
     akas_df = akas_df.loc[akas_df["region"].isin(["US", "GB"])]
-    
+
     return akas_df
 
 
@@ -55,8 +75,9 @@ def load_ratings(path: str) -> pd.DataFrame:
     click.echo("Processing title ratings...")
     ratings_df = ratings_df.loc[ratings_df["averageRating"] >= MIN_AVG_RATING]
     ratings_df = ratings_df.loc[ratings_df["numVotes"] >= MIN_RATING_COUNT]
-    
+
     return ratings_df
+
 
 def process(path: str) -> pd.DataFrame:
     """Load and process all relevant TSV files"""
@@ -68,7 +89,7 @@ def process(path: str) -> pd.DataFrame:
 
     # Join
     click.echo("Joining....")
-    df = df.set_index('titleId')
+    df = df.set_index("titleId")
     df = df.join(akas_df.set_index("titleId"), on=["titleId"], how="inner")
     df = df.join(ratings_df.set_index("titleId"), on="titleId", how="inner")
 
@@ -89,7 +110,16 @@ def main(output: str, path: str):
     df = process(path)
 
     # Only keep necessary fields
-    df = df[["titleId", "primaryTitle", "startYear", "runtimeMinutes", "genres", "averageRating"]]
+    df = df[
+        [
+            "titleId",
+            "primaryTitle",
+            "startYear",
+            "runtimeMinutes",
+            "genres",
+            "averageRating",
+        ]
+    ]
     df["genres"] = df["genres"].apply(lambda x: x.replace(",", " "))
 
     # Write to output
@@ -99,6 +129,6 @@ def main(output: str, path: str):
     click.echo(f"Wrote output to '{output_file}")
 
 
- # Entrypoint
+# Entrypoint
 if __name__ == "__main__":
     main()
