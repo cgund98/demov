@@ -2,7 +2,7 @@
   "name": "cdk-starter",
   "version": "0.1.0",
   "bin": {
-    "cdk-starter": "bin/cdk-starter.js"
+    "scraper": "bin/scraper.ts"
   },
   "scripts": {
     "build": "tsc",
@@ -15,14 +15,29 @@
   },
   "dependencies": {
     "@aws-cdk/assert": "1.100.0",
-    "@aws-cdk/aws-lambda": "1.100.0",
-    "@aws-cdk/aws-lambda-nodejs": "1.100.0",
-    "@aws-cdk/core": "1.100.0",
-    "aws-cdk": "1.100.0"
+    "@aws-cdk/aws-dynamodb": "^1.141.0",
+    "@aws-cdk/aws-iam": "^1.141.0",
+    "@aws-cdk/aws-lambda": "^1.141.0",
+    "@aws-cdk/aws-lambda-event-sources": "^1.141.0",
+    "@aws-cdk/aws-lambda-nodejs": "^1.141.0",
+    "@aws-cdk/aws-s3": "^1.141.0",
+    "@aws-cdk/aws-sqs": "^1.141.0",
+    "@aws-cdk/aws-ssm": "^1.141.0",
+    "@aws-cdk/core": "^1.141.0",
+    "@types/uuid": "^8.3.4",
+    "aws-cdk": "^1.141.0",
+    "aws-sdk": "^2.1065.0",
+    "axios": "^0.25.0",
+    "install": "^0.13.0",
+    "jsdom": "^16.4.0",
+    "npm": "^8.4.0",
+    "uuid": "^8.3.2",
+    "winston": "^3.5.0"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.75",
     "@types/jest": "^26.0.10",
+    "@types/jsdom": "^16.2.14",
     "@types/node": "14.14.41",
     "@typescript-eslint/eslint-plugin": "^4.22.0",
     "@typescript-eslint/parser": "^4.22.0",
