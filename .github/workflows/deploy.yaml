@@ -3,6 +3,9 @@ name: Deploy
 on:
   push:
 
+env:
+  DEPLOYMENT=nonprod
+
 jobs:
   deploy:
     name: Deploy with CDK
@@ -51,12 +54,10 @@ jobs:
         node-version: 14
 
     - name: Install NPM packages
-      run: npm install
+      run: npm install --only=dev
 
     - name: Lint
-      run: |
-        npm install eslint --save-dev
-        npm run lint
+      run: npm run lint
 
     - name: Check formatting
       run: npm run prettier-check
