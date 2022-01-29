@@ -43,7 +43,7 @@ export default class MoviesRepo implements IMoviesRepo {
 
     const data = await this.dynamodb.query(params).promise();
 
-    return data.Count === 0;
+    return data.Count !== 0;
   }
 
   // Delete a movie from DB

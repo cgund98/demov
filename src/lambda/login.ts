@@ -10,6 +10,7 @@ import Ajv, {JSONSchemaType} from 'ajv';
 
 import {logger} from '../util/logging';
 import {httpError} from '../util/errors';
+import {JWT_SECRET_SECRET} from '../util/config';
 
 // Initialize clients
 const ssm = new SSM();
@@ -65,7 +66,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (
   if (secret === '') {
     try {
       const data = await ssm
-        .getParameter({Name: '/dev/jwt-secret', WithDecryption: true})
+        .getParameter({Name: JWT_SECRET_SECRET, WithDecryption: true})
         .promise();
       secret = data.Parameter?.Value || '';
     } catch (err) {

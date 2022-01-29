@@ -213,6 +213,25 @@ export class DemovServiceStack extends cdk.Stack {
 
     jwtSecret.grantRead(loginLambda);
 
+    // createParty
+    const createPartyLambda = new NodejsFunction(this, 'create-party', {
+      timeout: cdk.Duration.seconds(5),
+      runtime: lambda.Runtime.NODEJS_14_X,
+      handler: 'handler',
+      entry: path.join(__dirname, `/../src/lambda/createParty.ts`),
+      bundling: {
+        minify: true,
+        externalModules: ['aws-sdk'],
+      },
+      environment: {
+        DYNAMO_TABLE: table.tableName,
+      },
+      tracing: lambda.Tracing.ACTIVE,
+    });
+
+    jwtSecret.grantRead(createPartyLambda);
+    table.grantReadWriteData(createPartyLambda);
+
     // Integrate lambdas with Lambda
     const movies = api.root.addResource('movies');
     const movie = movies.addResource('{movieId}');
@@ -231,5 +250,11 @@ export class DemovServiceStack extends cdk.Stack {
 
     const login = api.root.addResource('login');
     login.addMethod('POST', new apigateway.LambdaIntegration(loginLambda));
+
+    const parties = api.root.addResource('parties');
+    parties.addMethod(
+      'POST',
+      new apigateway.LambdaIntegration(createPartyLambda),
+    );
   }
 }
