@@ -9,7 +9,7 @@ import Ajv, {JSONSchemaType} from 'ajv';
 
 import {logger} from '../util/logging';
 import {httpError, NotAuthenticated} from '../util/errors';
-import {checkJwt} from '../util/jwt';
+import {checkJwt, JwtPayload} from '../util/jwt';
 import {Party} from '../data/party/entity';
 import PartiesRepo from '../data/party/repo';
 import PartyMoviesRepo from '../data/party-movie/repo';
@@ -18,7 +18,7 @@ import MovieGroupsRepo from '../data/movie-grouping/repo';
 import {forEach} from '../util/async';
 import {PartyMovie} from '../data/party-movie/entity';
 import {shuffle} from '../util/shuffle';
-import {JwtPayload} from '../util/jwt';
+
 import {randomString} from '../util/random';
 
 // Initialize clients
@@ -85,7 +85,7 @@ const createPartyMovies = async (
   for (let i = minRating; i <= maxRating; i += 1) ratings.push(i);
 
   // Get all movies with given criteria
-  let seenMovies = new Set();
+  const seenMovies = new Set();
   let movies: PartyMovie[] = [];
 
   // Iterate over each grouping
@@ -147,6 +147,7 @@ const createParty = async (body: Body, user: JwtPayload): Promise<Party> => {
   let joinCode = randomString(codeLength);
   let backoffs = 0;
   while (backoffs < maxRetries) {
+    // eslint-disable-next-line no-await-in-loop
     if (!(await partiesRepo.joinCodeExists(joinCode))) {
       break;
     }
@@ -168,7 +169,7 @@ const createParty = async (body: Body, user: JwtPayload): Promise<Party> => {
     ownerId: user.sub,
     status: 'waiting',
   };
-  partiesRepo.save(party);
+  await partiesRepo.save(party);
 
   return party;
 };
