@@ -79,13 +79,19 @@ const scrapeImage = async (imdbId: string): Promise<ImageOuts> => {
 
   // Get high res image
   const params = {i: imdbId, h: imageHeightHR, apikey: omdbToken};
-  let response = await httpClient.get(url, {params});
+  let response = await httpClient.get(url, {
+    params,
+    decompress: false,
+    // Ref: https://stackoverflow.com/a/61621094/4050261
+    responseType: 'arraybuffer',
+  });
 
   // Upload high res image to S3
   let s3params = {
     Bucket: bucketName,
     Key: result.imageUrlHR,
     Body: response.data as string,
+    ContentType: 'image/jpeg',
   };
 
   await s3.upload(s3params).promise();
@@ -99,6 +105,7 @@ const scrapeImage = async (imdbId: string): Promise<ImageOuts> => {
     Bucket: bucketName,
     Key: result.imageUrlLR,
     Body: response.data as string,
+    ContentType: 'image/jpeg',
   };
 
   await s3.upload(s3params).promise();
