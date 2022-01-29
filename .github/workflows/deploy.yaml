@@ -34,8 +34,8 @@ jobs:
       run: npx cdk diff
     
     - name: Deploy
+      if: ${{ github.ref_name == 'main' }}
       run: npx cdk deploy
-      if: ${{ github.ref == 'refs/head/main' }}
 
   lint:
     name: Lint
