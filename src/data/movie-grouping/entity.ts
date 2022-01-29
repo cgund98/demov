@@ -1,7 +1,7 @@
 import {DynamoEntity} from '../entity';
 
 /**
- * Movie is an entity representing a feature film.
+ * MovieGrouping is an entity representing a feature film.
  */
 export interface MovieGrouping {
   movieId: string;
@@ -11,6 +11,6 @@ export interface MovieGrouping {
 }
 
 /**
- * DynamoMovie is the format in which a Movie object will be persisted in DynamoDB.
+ * DynamoMovieGrouping is the format in which a MovieGrouping object will be persisted in DynamoDB.
  */
 export type DynamoMovieGrouping = DynamoEntity;

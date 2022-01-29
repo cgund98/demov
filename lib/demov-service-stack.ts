@@ -22,7 +22,14 @@ export class DemovServiceStack extends cdk.Stack {
       'imported-omdb-token',
       {
         parameterName: '/dev/omdb-token',
-        version: 1,
+      },
+    );
+
+    const jwtSecret = ssm.StringParameter.fromSecureStringParameterAttributes(
+      this,
+      'imported-jwt-secret',
+      {
+        parameterName: '/dev/jwt-secret',
       },
     );
 
@@ -191,7 +198,20 @@ export class DemovServiceStack extends cdk.Stack {
       tracing: lambda.Tracing.ACTIVE,
     });
 
-    table.grantReadData(getMovieGroupLambda);
+    // login
+    const loginLambda = new NodejsFunction(this, 'login-lm', {
+      timeout: cdk.Duration.seconds(5),
+      runtime: lambda.Runtime.NODEJS_14_X,
+      handler: 'handler',
+      entry: path.join(__dirname, `/../src/lambda/login.ts`),
+      bundling: {
+        minify: true,
+        externalModules: ['aws-sdk'],
+      },
+      tracing: lambda.Tracing.ACTIVE,
+    });
+
+    jwtSecret.grantRead(loginLambda);
 
     // Integrate lambdas with Lambda
     const movies = api.root.addResource('movies');
@@ -208,5 +228,8 @@ export class DemovServiceStack extends cdk.Stack {
       'GET',
       new apigateway.LambdaIntegration(getMovieGroupLambda),
     );
+
+    const login = api.root.addResource('login');
+    login.addMethod('POST', new apigateway.LambdaIntegration(loginLambda));
   }
 }
