@@ -4,7 +4,7 @@ on:
   push:
 
 env:
-  DEPLOYMENT=nonprod
+  DEPLOYMENT: nonprod
 
 jobs:
   deploy:
