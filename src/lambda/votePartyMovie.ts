@@ -1,21 +1,22 @@
 import {
   APIGatewayProxyEventV2,
-  APIGatewayProxyResultV2,
   APIGatewayProxyHandlerV2,
+  APIGatewayProxyResultV2,
 } from 'aws-lambda';
 import {DynamoDB} from 'aws-sdk';
 
-import MembersRepo from '../data/party-member/repo';
-import PartyMoviesRepo from '../data/party-movie/repo';
-import {httpError, NotPermitted} from '../util/errors';
-import HttpError from '../util/errors/httpError';
-import {checkJwt} from '../util/jwt';
 import {logger} from '../util/logging';
+import {httpError, NotPermitted} from '../util/errors';
+import {checkJwt} from '../util/jwt';
+import HttpError from '../util/errors/httpError';
+import PartyMoviesRepo from '../data/party-movie/repo';
+import MembersRepo from '../data/party-member/repo';
+import BadRequest from '../util/errors/badRequest';
 
-// Init clients
+// Initialize clients
 const dynamodb = new DynamoDB.DocumentClient();
-const membersRepo = new MembersRepo(dynamodb);
 const partyMoviesRepo = new PartyMoviesRepo(dynamodb);
+const membersRepo = new MembersRepo(dynamodb);
 
 // Lambda handler
 export const handler: APIGatewayProxyHandlerV2 = async (
@@ -23,22 +24,31 @@ export const handler: APIGatewayProxyHandlerV2 = async (
 ): Promise<APIGatewayProxyResultV2> => {
   // Parse path parameter
   const partyId = event.pathParameters?.partyId || '';
+  const movieId = event.pathParameters?.movieId || '';
 
   try {
+    // Check parameters
+    if (partyId === '' || movieId === '') throw new BadRequest();
+
     // Parse JWT
     const user = await checkJwt(event);
 
-    // Ensure user is in a member of party
+    // Ensure user is party member
+    logger.debug('Checking if user is a party member...');
     if (!(await membersRepo.existsIds(partyId, user.sub)))
       throw new NotPermitted();
 
-    // Fetch party movies
-    const movies = await partyMoviesRepo.getMoviesByPartyId(partyId);
+    // Update movie votes
+    logger.debug('Fetching movie...');
+    const movie = await partyMoviesRepo.getMovieByIds(partyId, movieId);
+    movie.score += 1;
 
-    // Return response
+    logger.debug('Saving movie...');
+    await partyMoviesRepo.save(movie);
+
     return {
-      body: JSON.stringify(movies),
       statusCode: 200,
+      body: JSON.stringify(movie),
     };
   } catch (err) {
     if (err instanceof HttpError) {

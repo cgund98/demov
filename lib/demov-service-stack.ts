@@ -63,7 +63,7 @@ export class DemovServiceStack extends cdk.Stack {
     const createMoviesSQS = new sqs.Queue(this, 'create-movies');
 
     /** API Gateway  */
-    const api = new apigateway.RestApi(this, 'demov-api', {
+    const api = new apigateway.RestApi(this, envSpecific('demov-api'), {
       description: 'Primary API gateway for demov application',
       deployOptions: {
         tracingEnabled: true,
@@ -83,12 +83,13 @@ export class DemovServiceStack extends cdk.Stack {
       },
       environment: {
         DYNAMO_TABLE: table.tableName,
+        LOG_LEVEL: 'debug',
       },
       tracing: lambda.Tracing.ACTIVE,
     };
 
     // createMovie
-    const createMovieLambda = new NodejsFunction(this, 'create-movie', {
+    const createMovie = new NodejsFunction(this, 'create-movie', {
       ...commonLambda,
       timeout: cdk.Duration.seconds(30),
       entry: path.join(__dirname, `/../src/lambda/createMovie.ts`),
@@ -97,12 +98,12 @@ export class DemovServiceStack extends cdk.Stack {
     const createMovieSqsSource = new SqsEventSource(createMoviesSQS, {
       batchSize: 5,
     });
-    createMovieLambda.addEventSource(createMovieSqsSource);
+    createMovie.addEventSource(createMovieSqsSource);
 
-    table.grantReadWriteData(createMovieLambda);
+    table.grantReadWriteData(createMovie);
 
     // enrichMovie
-    const enrichMovieLambda = new NodejsFunction(this, 'enrich-movie', {
+    const enrichMovie = new NodejsFunction(this, 'enrich-movie', {
       ...commonLambda,
       timeout: cdk.Duration.seconds(30),
       entry: path.join(__dirname, `/../src/lambda/enrichMovie.ts`),
@@ -111,29 +112,29 @@ export class DemovServiceStack extends cdk.Stack {
     const enrichMovieSqsSource = new SqsEventSource(enrichMoviesSQS, {
       batchSize: 5,
     });
-    enrichMovieLambda.addEventSource(enrichMovieSqsSource);
+    enrichMovie.addEventSource(enrichMovieSqsSource);
 
-    omdbToken.grantRead(enrichMovieLambda);
-    bucket.grantReadWrite(enrichMovieLambda);
-    createMoviesSQS.grantSendMessages(enrichMovieLambda);
+    omdbToken.grantRead(enrichMovie);
+    bucket.grantReadWrite(enrichMovie);
+    createMoviesSQS.grantSendMessages(enrichMovie);
 
     // getMovieById
-    const getMovieLambda = new NodejsFunction(this, 'get-movie', {
+    const getMovie = new NodejsFunction(this, 'get-movie', {
       ...commonLambda,
       handler: 'movieIdHandler',
       entry: path.join(__dirname, `/../src/lambda/getMovie.ts`),
     });
 
-    table.grantReadData(getMovieLambda);
+    table.grantReadData(getMovie);
 
     // getMovieByImdbId
-    const getMovieImdbLambda = new NodejsFunction(this, 'get-movie-imdb', {
+    const getMovieImdb = new NodejsFunction(this, 'get-movie-imdb', {
       ...commonLambda,
       handler: 'imdbIdHandler',
       entry: path.join(__dirname, `/../src/lambda/getMovie.ts`),
     });
 
-    table.grantReadData(getMovieImdbLambda);
+    table.grantReadData(getMovieImdb);
 
     // createMovieGroup
     const createMovieGroupsLambda = new NodejsFunction(
@@ -199,14 +200,43 @@ export class DemovServiceStack extends cdk.Stack {
     jwtSecret.grantRead(getParty);
     table.grantReadData(getParty);
 
-    // Integrate lambdas with Lambda
+    // startParty
+    const startParty = new NodejsFunction(this, 'start-party', {
+      ...commonLambda,
+      entry: path.join(__dirname, `/../src/lambda/startParty.ts`),
+    });
+
+    jwtSecret.grantRead(startParty);
+    table.grantReadWriteData(startParty);
+
+    // votePartyMovie
+    const votePartyMovie = new NodejsFunction(this, 'vote-party-movie', {
+      ...commonLambda,
+      entry: path.join(__dirname, `/../src/lambda/votePartyMovie.ts`),
+    });
+
+    jwtSecret.grantRead(votePartyMovie);
+    table.grantReadWriteData(votePartyMovie);
+
+    // createPartyMember
+    const createPartyMember = new NodejsFunction(this, 'create-party-member', {
+      ...commonLambda,
+      entry: path.join(__dirname, `/../src/lambda/createPartyMember.ts`),
+    });
+
+    jwtSecret.grantRead(createPartyMember);
+    table.grantReadWriteData(createPartyMember);
+
+    /** Integrate lambdas with Lambda */
+
+    // Movies
     const movies = api.root.addResource('movies');
     const movie = movies.addResource('{movieId}');
-    movie.addMethod('GET', new apigateway.LambdaIntegration(getMovieLambda));
+    movie.addMethod('GET', new apigateway.LambdaIntegration(getMovie));
 
     const imdbs = api.root.addResource('imdb');
     const imdb = imdbs.addResource('{imdbId}');
-    imdb.addMethod('GET', new apigateway.LambdaIntegration(getMovieImdbLambda));
+    imdb.addMethod('GET', new apigateway.LambdaIntegration(getMovieImdb));
 
     const groups = api.root.addResource('groups');
     const movieGroups = groups.addResource('movies');
@@ -215,9 +245,11 @@ export class DemovServiceStack extends cdk.Stack {
       new apigateway.LambdaIntegration(getMovieGroupLambda),
     );
 
+    // Authentication
     const login = api.root.addResource('login');
     login.addMethod('POST', new apigateway.LambdaIntegration(loginLambda));
 
+    // Parties
     const parties = api.root.addResource('parties');
     parties.addMethod(
       'POST',
@@ -225,17 +257,35 @@ export class DemovServiceStack extends cdk.Stack {
     );
     const party = parties.addResource('{partyId}');
     party.addMethod('GET', new apigateway.LambdaIntegration(getParty));
+    party.addMethod('PUT', new apigateway.LambdaIntegration(startParty));
 
+    // Party members
     const partyMembers = party.addResource('members');
     partyMembers.addMethod(
       'GET',
       new apigateway.LambdaIntegration(getPartyMembers),
     );
+    partyMembers.addMethod(
+      'POST',
+      new apigateway.LambdaIntegration(createPartyMember),
+    );
 
+    // Party movies
     const partyMovies = party.addResource('movies');
     partyMovies.addMethod(
       'GET',
       new apigateway.LambdaIntegration(getPartyMovies),
     );
+
+    const partyMovie = partyMovies.addResource('{movieId}');
+    partyMovie.addMethod(
+      'PUT',
+      new apigateway.LambdaIntegration(votePartyMovie),
+    );
+
+    // Join party by code
+    const join = api.root.addResource('join');
+    const code = join.addResource('{joinCode}');
+    code.addMethod('POST', new apigateway.LambdaIntegration(createPartyMember));
   }
 }

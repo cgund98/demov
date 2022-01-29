@@ -9,6 +9,7 @@ import {NotFound} from '../../util/errors';
 /** This interface extends the base repo interface and will be implemented by our partys repository */
 interface IPartiesRepo extends Repo<Party> {
   getPartyById(partyId: string): Promise<Party>;
+  getPartyByJoinCode(joinCode: string): Promise<Party>;
   joinCodeExists(joinCode: string): Promise<boolean>;
 }
 
@@ -61,6 +62,28 @@ export default class PartiesRepo implements IPartiesRepo {
     const data = await this.dynamodb.query(params).promise();
 
     return data.Count !== 0;
+  }
+
+  // Get a party by its join code from DB
+  public async getPartyByJoinCode(joinCode: string): Promise<Party> {
+    const params = {
+      TableName: DYNAMO_TABLE,
+      IndexName: 'GSI-1',
+      ExpressionAttributeValues: {
+        ':id': `join-code#${joinCode}`,
+      },
+      KeyConditionExpression: 'sk = :id',
+      Limit: 1,
+    };
+
+    const data = await this.dynamodb.query(params).promise();
+
+    // Throw error if no party found
+    if (data.Items === undefined || data.Count === 0)
+      throw new NotFound(joinCode);
+
+    // Map from DB format
+    return PartyMapper.fromDB(data.Items[0] as DynamoParty);
   }
 
   // Delete a party from DB

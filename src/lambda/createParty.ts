@@ -10,7 +10,7 @@ import Ajv, {JSONSchemaType} from 'ajv';
 import {logger} from '../util/logging';
 import {httpError, NotAuthenticated} from '../util/errors';
 import {checkJwt, JwtPayload} from '../util/jwt';
-import {Party} from '../data/party/entity';
+import {Party, PartyStatus} from '../data/party/entity';
 import PartiesRepo from '../data/party/repo';
 import PartyMoviesRepo from '../data/party-movie/repo';
 import MembersRepo from '../data/party-member/repo';
@@ -89,11 +89,11 @@ const createPartyMovies = async (
   let movies: PartyMovie[] = [];
 
   // Iterate over each grouping
-  logger.info('Query movie groups...');
+  logger.debug('Query movie groups...');
   await forEach(genres, async genre => {
     await forEach(ratings, async rating => {
       // Get movie group from DB
-      logger.info(`Trying to query group: movie-group#${genre}#${rating}`);
+      logger.debug(`Trying to query group: movie-group#${genre}#${rating}`);
       const group = await movieGroupsRepo.getMovieGroup(
         genre,
         rating,
@@ -111,14 +111,14 @@ const createPartyMovies = async (
       });
     });
   });
-  logger.info(`Found ${movies.length} total movies.`);
+  logger.debug(`Found ${movies.length} total movies.`);
 
   // Shuffle list
   movies = shuffle(movies);
   movies = movies.slice(0, maxSwipes);
 
   // Populate changes in DB
-  logger.info('Saving party movies...');
+  logger.debug('Saving party movies...');
   await partyMoviesRepo.saveBatch(movies);
 };
 
@@ -143,7 +143,7 @@ const createParty = async (body: Body, user: JwtPayload): Promise<Party> => {
   const partyId = v4();
 
   // Generate unique join code
-  logger.info('Generating join code...');
+  logger.debug('Generating join code...');
   let joinCode = randomString(codeLength);
   let backoffs = 0;
   while (backoffs < maxRetries) {
@@ -160,14 +160,14 @@ const createParty = async (body: Body, user: JwtPayload): Promise<Party> => {
   }
 
   // persist party to database
-  logger.info('Saving party...');
+  logger.debug('Saving party...');
   const party = {
     partyId,
     joinCode,
     creationTime: now.getTime(),
     lastModified: now.getTime(),
     ownerId: user.sub,
-    status: 'waiting',
+    status: 'waiting' as PartyStatus,
   };
   await partiesRepo.save(party);
 
@@ -189,15 +189,15 @@ export const handler: APIGatewayProxyHandlerV2 = async (
     const inp = JSON.parse(body) as Body;
 
     // Create party
-    logger.info('Creating party...');
+    logger.debug('Creating party...');
     const party = await createParty(inp, user);
 
     // Create party member
-    logger.info('Creating party member...');
+    logger.debug('Creating party member...');
     await createPartyMember(party.partyId, user);
 
     // Create party movies
-    logger.info('Creating party movies...');
+    logger.debug('Creating party movies...');
     await createPartyMovies(party.partyId, inp);
 
     return {

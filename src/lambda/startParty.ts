@@ -1,21 +1,19 @@
 import {
   APIGatewayProxyEventV2,
-  APIGatewayProxyResultV2,
   APIGatewayProxyHandlerV2,
+  APIGatewayProxyResultV2,
 } from 'aws-lambda';
 import {DynamoDB} from 'aws-sdk';
 
-import MembersRepo from '../data/party-member/repo';
-import PartyMoviesRepo from '../data/party-movie/repo';
-import {httpError, NotPermitted} from '../util/errors';
-import HttpError from '../util/errors/httpError';
-import {checkJwt} from '../util/jwt';
 import {logger} from '../util/logging';
+import {httpError, NotPermitted} from '../util/errors';
+import {checkJwt} from '../util/jwt';
+import PartiesRepo from '../data/party/repo';
+import HttpError from '../util/errors/httpError';
 
-// Init clients
+// Initialize clients
 const dynamodb = new DynamoDB.DocumentClient();
-const membersRepo = new MembersRepo(dynamodb);
-const partyMoviesRepo = new PartyMoviesRepo(dynamodb);
+const partiesRepo = new PartiesRepo(dynamodb);
 
 // Lambda handler
 export const handler: APIGatewayProxyHandlerV2 = async (
@@ -25,20 +23,21 @@ export const handler: APIGatewayProxyHandlerV2 = async (
   const partyId = event.pathParameters?.partyId || '';
 
   try {
-    // Parse JWT
     const user = await checkJwt(event);
 
-    // Ensure user is in a member of party
-    if (!(await membersRepo.existsIds(partyId, user.sub)))
-      throw new NotPermitted();
+    // Fetch party
+    const party = await partiesRepo.getPartyById(partyId);
 
-    // Fetch party movies
-    const movies = await partyMoviesRepo.getMoviesByPartyId(partyId);
+    // Ensure user is party owner
+    if (user.sub !== party.ownerId) throw new NotPermitted();
 
-    // Return response
+    // Update status
+    party.status = 'active';
+    await partiesRepo.save(party);
+
     return {
-      body: JSON.stringify(movies),
       statusCode: 200,
+      body: JSON.stringify(party),
     };
   } catch (err) {
     if (err instanceof HttpError) {

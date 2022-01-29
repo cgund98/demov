@@ -13,6 +13,7 @@ const wrapSk = (partyId: string) => `party#${partyId}#movies`;
 
 /** This interface extends the base repo interface and will be implemented by our movies repository */
 interface IPartyMoviesRepo extends Repo<PartyMovie> {
+  getMovieByIds(partyId: string, movieId: string): Promise<PartyMovie>;
   getMoviesByPartyId(partyId: string): Promise<PartyMovie[]>;
   saveBatch(movies: PartyMovie[]): Promise<void>;
 }
@@ -82,6 +83,31 @@ export default class PartyMoviesRepo implements IPartyMoviesRepo {
     return data.Count !== 0;
   }
 
+  // Get a single movie by its party ID and movie ID
+  public async getMovieByIds(
+    partyId: string,
+    movieId: string,
+  ): Promise<PartyMovie> {
+    const params = {
+      TableName: DYNAMO_TABLE,
+      ExpressionAttributeValues: {
+        ':movieid': wrapPk(movieId),
+        ':partyid': wrapSk(partyId),
+      },
+      KeyConditionExpression: 'pk = :movieid AND sk = :partyid',
+      Limit: 1,
+    };
+
+    const data = await this.dynamodb.query(params).promise();
+
+    // Throw error if no party found
+    if (data.Items === undefined || data.Count === 0)
+      throw new NotFound(`${partyId}#${movieId}`);
+
+    // Map from DB format
+    return PartyMovieMapper.fromDB(data.Items[0] as DynamoPartyMovie);
+  }
+
   // Delete a movie from DB
   public async delete(movie: PartyMovie): Promise<void> {
     const params = {
@@ -105,6 +131,7 @@ export default class PartyMoviesRepo implements IPartyMoviesRepo {
       ExpressionAttributeValues: {
         ':id': wrapSk(partyId),
       },
+      ScanIndexForward: false,
     };
 
     const data = await this.dynamodb.query(params).promise();

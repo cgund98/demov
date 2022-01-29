@@ -15,3 +15,6 @@ export const httpError = (
 export {default as NotAuthenticated} from './notAuthenticated';
 export {default as NotFound} from './notFound';
 export {default as NotPermitted} from './notPermitted';
+export {default as badRequest} from './badRequest';
+export {default as Conflict} from './conflict';
+export {default as HttpError} from './httpError';

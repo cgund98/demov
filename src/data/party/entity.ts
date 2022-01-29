@@ -1,5 +1,7 @@
 import {DynamoEntity} from '../entity';
 
+export type PartyStatus = 'waiting' | 'active';
+
 /**
  * Party is an entity representing a swiping party.
  */
@@ -9,7 +11,7 @@ export interface Party {
   ownerId: string; // id of the user that created the party
   creationTime: number; // when the party was created (unix)
   lastModified: number; // last time the party object was modified (unix)
-  status: string; // can be one of ('waiting', 'active')
+  status: PartyStatus; // can be one of ('waiting', 'active')
 }
 
 /**

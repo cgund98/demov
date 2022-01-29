@@ -10,6 +10,7 @@ import {NotFound} from '../../util/errors';
 interface IMembersRepo extends Repo<Member> {
   getMembersByPartyId(partyId: string): Promise<Member[]>;
   existsIds(partyId: string, memberId: string): Promise<boolean>;
+  getMemberByIds(partyId: string, memberId: string): Promise<Member>;
 }
 
 // Helper methods
@@ -54,6 +55,31 @@ export default class MembersRepo implements IMembersRepo {
     const data = await this.dynamodb.query(params).promise();
 
     return data.Count !== 0;
+  }
+
+  // Check get a party member by their party ID and user ID
+  public async getMemberByIds(
+    partyId: string,
+    memberId: string,
+  ): Promise<Member> {
+    const params = {
+      TableName: DYNAMO_TABLE,
+      ExpressionAttributeValues: {
+        ':partyid': wrapPk(partyId),
+        ':memberid': wrapSk(memberId),
+      },
+      KeyConditionExpression: 'sk = :memberid AND pk = :partyid',
+      Limit: 1,
+    };
+
+    const data = await this.dynamodb.query(params).promise();
+
+    // Throw error if no party found
+    if (data.Items === undefined || data.Count === 0)
+      throw new NotFound(`${partyId}#${memberId}`);
+
+    // Map from DB format
+    return MemberMapper.fromDB(data.Items[0] as DynamoMember);
   }
 
   // Delete a member from DB

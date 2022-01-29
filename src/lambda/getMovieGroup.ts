@@ -8,6 +8,8 @@ import {
 import MovieGroupsRepo from '../data/movie-grouping/repo';
 import {logger} from '../util/logging';
 import {httpError} from '../util/errors';
+import HttpError from '../util/errors/httpError';
+import {checkJwt} from '../util/jwt';
 
 // Init clients
 const dynamodb = new DynamoDB.DocumentClient();
@@ -81,6 +83,8 @@ export const handler: APIGatewayProxyHandlerV2 = async (
   const {genre, ratingTrunc, minYear, maxYear} = readParams(event);
 
   try {
+    await checkJwt(event);
+
     const group = await movieGroupsRepo.getMovieGroup(
       genre,
       ratingTrunc,
@@ -93,6 +97,10 @@ export const handler: APIGatewayProxyHandlerV2 = async (
       body: JSON.stringify(group),
     };
   } catch (err) {
+    if (err instanceof HttpError) {
+      return err.serialize();
+    }
+
     logger.error(err);
     return httpError();
   }

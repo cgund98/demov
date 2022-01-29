@@ -6,12 +6,8 @@ import {
 import {DynamoDB} from 'aws-sdk';
 
 import MembersRepo from '../data/party-member/repo';
-import {
-  NotFound,
-  httpError,
-  NotAuthenticated,
-  NotPermitted,
-} from '../util/errors';
+import {httpError, NotPermitted} from '../util/errors';
+import HttpError from '../util/errors/httpError';
 import {checkJwt} from '../util/jwt';
 import {logger} from '../util/logging';
 
@@ -46,18 +42,11 @@ export const handler: APIGatewayProxyHandlerV2 = async (
       statusCode: 200,
     };
   } catch (err) {
-    if (err instanceof NotFound) {
-      return httpError(404, err.message);
-    }
-    if (err instanceof NotAuthenticated) {
-      return httpError(401, err.message);
-    }
-    if (err instanceof NotPermitted) {
-      return httpError(403, err.message);
+    if (err instanceof HttpError) {
+      return err.serialize();
     }
 
     logger.error(err);
-
-    return httpError(500, 'Internal server error.');
+    return httpError();
   }
 };
