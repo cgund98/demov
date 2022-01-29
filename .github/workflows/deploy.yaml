@@ -54,7 +54,7 @@ jobs:
         node-version: 14
 
     - name: Install NPM packages
-      run: npm install --only=dev
+      run: npm install
 
     - name: Lint
       run: npm run lint
