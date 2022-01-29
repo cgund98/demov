@@ -10,7 +10,7 @@ import {SqsEventSource} from '@aws-cdk/aws-lambda-event-sources';
 import * as cdk from '@aws-cdk/core';
 import * as path from 'path';
 
-import {envSpecific} from '../src/util/env';
+import {envSpecific} from '../src/util/environ';
 
 export class DemovServiceStack extends cdk.Stack {
   constructor(scope: cdk.App, id: string, props?: cdk.StackProps) {
