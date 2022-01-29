@@ -54,7 +54,9 @@ jobs:
       run: npm install
 
     - name: Lint
-      run: npm run lint
+      run: |
+        npm install eslint --save-dev
+        npm run lint
 
     - name: Check formatting
       run: npm run prettier-check

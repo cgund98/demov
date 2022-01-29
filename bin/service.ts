@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import * as cdk from '@aws-cdk/core';
 import {DemovServiceStack} from '../lib/demov-service-stack';
-import {envSpecific} from '../src/util/env';
+import {envSpecific} from '../src/util/environ';
 
 const app = new cdk.App();
 new DemovServiceStack(app, envSpecific('demov-service-stack'), {
