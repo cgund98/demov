@@ -12,4 +12,6 @@ export interface PartyMovie {
 /**
  * DynamoPartyMovie is the format in which a PartyMovie object will be persisted in DynamoDB.
  */
-export type DynamoPartyMovie = DynamoEntity;
+export interface DynamoPartyMovie extends DynamoEntity {
+  movieId: string;
+}

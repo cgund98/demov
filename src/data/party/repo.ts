@@ -35,10 +35,9 @@ export default class PartiesRepo implements IPartiesRepo {
     const params = {
       TableName: DYNAMO_TABLE,
       ExpressionAttributeValues: {
-        ':start': `join-code#`,
         ':id': `party#${party.partyId}`,
       },
-      KeyConditionExpression: 'pk = :id AND begin_with(sk, :start)',
+      KeyConditionExpression: 'pk = :id',
       Limit: 1,
     };
 
@@ -71,11 +70,6 @@ export default class PartiesRepo implements IPartiesRepo {
       Key: {
         pk: `party#${party.partyId}`,
       },
-      ExpressionAttributeValues: {
-        ':start': `join-code#`,
-      },
-      KeyConditionExpression: ':id begin_with(sk, :start)',
-      Limit: 1,
     };
 
     await this.dynamodb.delete(params).promise();
@@ -87,10 +81,9 @@ export default class PartiesRepo implements IPartiesRepo {
     const params = {
       TableName: DYNAMO_TABLE,
       ExpressionAttributeValues: {
-        ':start': `join-code#`,
         ':id': `party#${partyId}`,
       },
-      KeyConditionExpression: 'pk = :id AND begin_with(sk, :start)',
+      KeyConditionExpression: 'pk = :id',
       Limit: 1,
     };
 

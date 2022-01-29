@@ -42,8 +42,6 @@ export const movieIdHandler: APIGatewayProxyHandlerV2 = async (
 export const imdbIdHandler: APIGatewayProxyHandlerV2 = async (
   event: APIGatewayProxyEventV2,
 ): Promise<APIGatewayProxyResultV2> => {
-  console.log(`Message received. ${event.rawPath}`);
-
   const imdbId = event.pathParameters?.imdbId || '';
 
   try {

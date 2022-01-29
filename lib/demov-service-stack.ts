@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import * as lambda from '@aws-cdk/aws-lambda';
 import * as dynamodb from '@aws-cdk/aws-dynamodb';
 import * as sqs from '@aws-cdk/aws-sqs';
@@ -74,12 +73,10 @@ export class DemovServiceStack extends cdk.Stack {
 
     /** Lambda functions */
 
-    // createMovie
-    const createMovieLambda = new NodejsFunction(this, 'create-movie', {
-      timeout: cdk.Duration.seconds(30),
+    const commonLambda = {
+      timeout: cdk.Duration.seconds(5),
       runtime: lambda.Runtime.NODEJS_14_X,
       handler: 'handler',
-      entry: path.join(__dirname, `/../src/lambda/createMovie.ts`),
       bundling: {
         minify: true,
         externalModules: ['aws-sdk'],
@@ -88,6 +85,13 @@ export class DemovServiceStack extends cdk.Stack {
         DYNAMO_TABLE: table.tableName,
       },
       tracing: lambda.Tracing.ACTIVE,
+    };
+
+    // createMovie
+    const createMovieLambda = new NodejsFunction(this, 'create-movie', {
+      ...commonLambda,
+      timeout: cdk.Duration.seconds(30),
+      entry: path.join(__dirname, `/../src/lambda/createMovie.ts`),
     });
 
     const createMovieSqsSource = new SqsEventSource(createMoviesSQS, {
@@ -99,19 +103,9 @@ export class DemovServiceStack extends cdk.Stack {
 
     // enrichMovie
     const enrichMovieLambda = new NodejsFunction(this, 'enrich-movie', {
+      ...commonLambda,
       timeout: cdk.Duration.seconds(30),
-      runtime: lambda.Runtime.NODEJS_14_X,
-      handler: 'handler',
       entry: path.join(__dirname, `/../src/lambda/enrichMovie.ts`),
-      bundling: {
-        minify: true,
-        externalModules: ['aws-sdk'],
-      },
-      environment: {
-        BUCKET_NAME: bucket.bucketName,
-        SQS_DESTINATION: createMoviesSQS.queueUrl,
-      },
-      tracing: lambda.Tracing.ACTIVE,
     });
 
     const enrichMovieSqsSource = new SqsEventSource(enrichMoviesSQS, {
@@ -125,36 +119,18 @@ export class DemovServiceStack extends cdk.Stack {
 
     // getMovieById
     const getMovieLambda = new NodejsFunction(this, 'get-movie', {
-      timeout: cdk.Duration.seconds(5),
-      runtime: lambda.Runtime.NODEJS_14_X,
+      ...commonLambda,
       handler: 'movieIdHandler',
       entry: path.join(__dirname, `/../src/lambda/getMovie.ts`),
-      bundling: {
-        minify: true,
-        externalModules: ['aws-sdk'],
-      },
-      environment: {
-        DYNAMO_TABLE: table.tableName,
-      },
-      tracing: lambda.Tracing.ACTIVE,
     });
 
     table.grantReadData(getMovieLambda);
 
     // getMovieByImdbId
     const getMovieImdbLambda = new NodejsFunction(this, 'get-movie-imdb', {
-      timeout: cdk.Duration.seconds(5),
-      runtime: lambda.Runtime.NODEJS_14_X,
+      ...commonLambda,
       handler: 'imdbIdHandler',
       entry: path.join(__dirname, `/../src/lambda/getMovie.ts`),
-      bundling: {
-        minify: true,
-        externalModules: ['aws-sdk'],
-      },
-      environment: {
-        DYNAMO_TABLE: table.tableName,
-      },
-      tracing: lambda.Tracing.ACTIVE,
     });
 
     table.grantReadData(getMovieImdbLambda);
@@ -164,19 +140,10 @@ export class DemovServiceStack extends cdk.Stack {
       this,
       'create-movie-groups',
       {
+        ...commonLambda,
         timeout: cdk.Duration.seconds(60),
         memorySize: 512,
-        runtime: lambda.Runtime.NODEJS_14_X,
-        handler: 'handler',
         entry: path.join(__dirname, `/../src/lambda/createMovieGroups.ts`),
-        bundling: {
-          minify: true,
-          externalModules: ['aws-sdk'],
-        },
-        environment: {
-          DYNAMO_TABLE: table.tableName,
-        },
-        tracing: lambda.Tracing.ACTIVE,
       },
     );
 
@@ -184,53 +151,53 @@ export class DemovServiceStack extends cdk.Stack {
 
     // getMovieByImdbId
     const getMovieGroupLambda = new NodejsFunction(this, 'get-movie-group', {
-      timeout: cdk.Duration.seconds(5),
-      runtime: lambda.Runtime.NODEJS_14_X,
-      handler: 'handler',
+      ...commonLambda,
       entry: path.join(__dirname, `/../src/lambda/getMovieGroup.ts`),
-      bundling: {
-        minify: true,
-        externalModules: ['aws-sdk'],
-      },
-      environment: {
-        DYNAMO_TABLE: table.tableName,
-      },
-      tracing: lambda.Tracing.ACTIVE,
     });
 
     // login
     const loginLambda = new NodejsFunction(this, 'login-lm', {
-      timeout: cdk.Duration.seconds(5),
-      runtime: lambda.Runtime.NODEJS_14_X,
-      handler: 'handler',
+      ...commonLambda,
       entry: path.join(__dirname, `/../src/lambda/login.ts`),
-      bundling: {
-        minify: true,
-        externalModules: ['aws-sdk'],
-      },
-      tracing: lambda.Tracing.ACTIVE,
     });
 
     jwtSecret.grantRead(loginLambda);
 
     // createParty
     const createPartyLambda = new NodejsFunction(this, 'create-party', {
-      timeout: cdk.Duration.seconds(5),
-      runtime: lambda.Runtime.NODEJS_14_X,
-      handler: 'handler',
+      ...commonLambda,
       entry: path.join(__dirname, `/../src/lambda/createParty.ts`),
-      bundling: {
-        minify: true,
-        externalModules: ['aws-sdk'],
-      },
-      environment: {
-        DYNAMO_TABLE: table.tableName,
-      },
-      tracing: lambda.Tracing.ACTIVE,
     });
 
     jwtSecret.grantRead(createPartyLambda);
     table.grantReadWriteData(createPartyLambda);
+
+    // getPartyMembers
+    const getPartyMembers = new NodejsFunction(this, 'get-party-members', {
+      ...commonLambda,
+      entry: path.join(__dirname, `/../src/lambda/getPartyMembers.ts`),
+    });
+
+    jwtSecret.grantRead(getPartyMembers);
+    table.grantReadData(getPartyMembers);
+
+    // getPartyMovies
+    const getPartyMovies = new NodejsFunction(this, 'get-party-movies', {
+      ...commonLambda,
+      entry: path.join(__dirname, `/../src/lambda/getPartyMovies.ts`),
+    });
+
+    jwtSecret.grantRead(getPartyMovies);
+    table.grantReadData(getPartyMovies);
+
+    // getParty
+    const getParty = new NodejsFunction(this, 'get-party', {
+      ...commonLambda,
+      entry: path.join(__dirname, `/../src/lambda/getParty.ts`),
+    });
+
+    jwtSecret.grantRead(getParty);
+    table.grantReadData(getParty);
 
     // Integrate lambdas with Lambda
     const movies = api.root.addResource('movies');
@@ -255,6 +222,20 @@ export class DemovServiceStack extends cdk.Stack {
     parties.addMethod(
       'POST',
       new apigateway.LambdaIntegration(createPartyLambda),
+    );
+    const party = parties.addResource('{partyId}');
+    party.addMethod('GET', new apigateway.LambdaIntegration(getParty));
+
+    const partyMembers = party.addResource('members');
+    partyMembers.addMethod(
+      'GET',
+      new apigateway.LambdaIntegration(getPartyMembers),
+    );
+
+    const partyMovies = party.addResource('movies');
+    partyMovies.addMethod(
+      'GET',
+      new apigateway.LambdaIntegration(getPartyMovies),
     );
   }
 }

@@ -5,10 +5,15 @@ import {DynamoPartyMovie, PartyMovie} from './entity';
 import {PartyMovieMapper} from './mapper';
 import {DYNAMO_TABLE} from '../../util/config';
 import {NotFound} from '../../util/errors';
+import {forEach} from '../../util/async';
+
+// Helper methods
+const wrapPk = (movieId: string) => `party-movie#${movieId}`;
+const wrapSk = (partyId: string) => `party#${partyId}#movies`;
 
 /** This interface extends the base repo interface and will be implemented by our movies repository */
 interface IPartyMoviesRepo extends Repo<PartyMovie> {
-  getPartyMovieById(movieId: string, partyId: string): Promise<PartyMovie>;
+  getMoviesByPartyId(partyId: string): Promise<PartyMovie[]>;
   saveBatch(movies: PartyMovie[]): Promise<void>;
 }
 
@@ -32,19 +37,33 @@ export default class PartyMoviesRepo implements IPartyMoviesRepo {
 
   // Persist an array of movies to DB
   public async saveBatch(movies: PartyMovie[]): Promise<void> {
-    const req = movies.map(movie => ({
-      PutRequest: {
-        Item: PartyMovieMapper.toDB(movie),
-      },
-    }));
+    // Split movies into chunks, as size limit for a batch is 25
+    let i = 0;
+    const j = movies.length;
+    const chunkSize = 24;
+    const chunks: PartyMovie[][] = [];
+    while (i < j) {
+      chunks.push(movies.slice(i, i + chunkSize));
 
-    const params = {
-      RequestItems: {
-        [DYNAMO_TABLE]: req,
-      },
-    };
+      i += chunkSize;
+    }
 
-    await this.dynamodb.batchWrite(params).promise();
+    // Batch save each chunk
+    await forEach(chunks, async chunk => {
+      const req = chunk.map(movie => ({
+        PutRequest: {
+          Item: PartyMovieMapper.toDB(movie),
+        },
+      }));
+
+      const params = {
+        RequestItems: {
+          [DYNAMO_TABLE]: req,
+        },
+      };
+
+      await this.dynamodb.batchWrite(params).promise();
+    });
   }
 
   // Check if a movie exists in DB
@@ -52,8 +71,8 @@ export default class PartyMoviesRepo implements IPartyMoviesRepo {
     const params = {
       TableName: DYNAMO_TABLE,
       Key: {
-        pk: `party#${movie.partyId}`,
-        sk: `movie#${movie.movieId}`,
+        pk: wrapPk(movie.movieId),
+        sk: wrapSk(movie.partyId),
       },
       Limit: 1,
     };
@@ -68,37 +87,34 @@ export default class PartyMoviesRepo implements IPartyMoviesRepo {
     const params = {
       TableName: DYNAMO_TABLE,
       Key: {
-        pk: `party#${movie.partyId}`,
-        sk: `movie#${movie.movieId}`,
+        pk: wrapPk(movie.movieId),
+        sk: wrapSk(movie.partyId),
       },
     };
 
     await this.dynamodb.delete(params).promise();
   }
 
-  // Get a movie by its ID from DB
-  public async getPartyMovieById(
-    movieId: string,
-    partyId: string,
-  ): Promise<PartyMovie> {
+  // Get all party movies for a given party ID
+  public async getMoviesByPartyId(partyId: string): Promise<PartyMovie[]> {
     // Query DB
     const params = {
       TableName: DYNAMO_TABLE,
+      IndexName: 'GSI-1',
+      KeyConditionExpression: 'sk = :id',
       ExpressionAttributeValues: {
-        ':partyid': `party#${partyId}`,
-        ':movieid': `movie#${movieId}`,
+        ':id': wrapSk(partyId),
       },
-      KeyConditionExpression: 'sk = :movieid AND pk = :partyid',
-      Limit: 1,
     };
 
     const data = await this.dynamodb.query(params).promise();
 
-    // Throw error if no movie found
-    if (data.Items === undefined || data.Count === 0)
-      throw new NotFound(movieId);
+    // Throw error if no member found
+    if (data.Items === undefined) throw new NotFound(partyId);
 
     // Map from DB format
-    return PartyMovieMapper.fromDB(data.Items[0] as DynamoPartyMovie);
+    return data.Items.map(item =>
+      PartyMovieMapper.fromDB(item as DynamoPartyMovie),
+    );
   }
 }

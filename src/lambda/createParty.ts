@@ -91,8 +91,9 @@ const createPartyMovies = async (
   // Iterate over each grouping
   logger.info('Query movie groups...');
   await forEach(genres, async genre => {
-    forEach(ratings, async rating => {
+    await forEach(ratings, async rating => {
       // Get movie group from DB
+      logger.info(`Trying to query group: movie-group#${genre}#${rating}`);
       const group = await movieGroupsRepo.getMovieGroup(
         genre,
         rating,
@@ -110,17 +111,15 @@ const createPartyMovies = async (
       });
     });
   });
+  logger.info(`Found ${movies.length} total movies.`);
 
   // Shuffle list
   movies = shuffle(movies);
-
-  // Clip number of movies to max swipes
-  if (movies.length > maxSwipes)
-    movies = movies.filter((_, i) => i < maxSwipes);
+  movies = movies.slice(0, maxSwipes);
 
   // Populate changes in DB
   logger.info('Saving party movies...');
-  partyMoviesRepo.saveBatch(movies);
+  await partyMoviesRepo.saveBatch(movies);
 };
 
 // Create a new party member, the owner
@@ -129,7 +128,7 @@ const createPartyMember = async (
   user: JwtPayload,
 ): Promise<void> => {
   const now = new Date();
-  membersRepo.save({
+  await membersRepo.save({
     partyId,
     memberId: user.sub,
     name: user.name,
