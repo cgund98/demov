@@ -1,8 +1,4 @@
-import {
-  APIGatewayProxyEventV2,
-  APIGatewayProxyHandlerV2,
-  APIGatewayProxyResultV2,
-} from 'aws-lambda';
+import {APIGatewayProxyEventV2, APIGatewayProxyHandlerV2, APIGatewayProxyResultV2} from 'aws-lambda';
 import {SSM} from 'aws-sdk';
 import jwt from 'jsonwebtoken';
 import {v4} from 'uuid';
@@ -57,17 +53,14 @@ export const handler: APIGatewayProxyHandlerV2 = async (
 
   // Validate request body
   const {body} = event;
-  if (body === undefined || !isJson(body) || !validate(JSON.parse(body)))
-    return httpError(400, 'Invalid payload.');
+  if (body === undefined || !isJson(body) || !validate(JSON.parse(body))) return httpError(400, 'Invalid payload.');
 
   const {name} = JSON.parse(body) as Body;
 
   // Fetch secret
   if (secret === '') {
     try {
-      const data = await ssm
-        .getParameter({Name: JWT_SECRET_SECRET, WithDecryption: true})
-        .promise();
+      const data = await ssm.getParameter({Name: JWT_SECRET_SECRET, WithDecryption: true}).promise();
       secret = data.Parameter?.Value || '';
     } catch (err) {
       logger.error(err);

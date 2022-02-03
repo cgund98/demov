@@ -19,18 +19,14 @@ let secret = '';
  *
  * @param event API Gateway event that triggers the lambda function
  */
-export const checkJwt = async (
-  event: APIGatewayProxyEventV2,
-): Promise<JwtPayload> => {
+export const checkJwt = async (event: APIGatewayProxyEventV2): Promise<JwtPayload> => {
   // Parse token
   const token = event.headers.Authorization?.split(' ')[1] || '';
   if (token === '') throw new NotAuthenticated();
 
   // Pull secret if not yet done
   if (secret === '') {
-    const data = await ssm
-      .getParameter({Name: JWT_SECRET_SECRET, WithDecryption: true})
-      .promise();
+    const data = await ssm.getParameter({Name: JWT_SECRET_SECRET, WithDecryption: true}).promise();
     secret = data.Parameter?.Value || '';
   }
 

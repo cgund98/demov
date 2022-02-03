@@ -1,8 +1,4 @@
-import {
-  APIGatewayProxyEventV2,
-  APIGatewayProxyHandlerV2,
-  APIGatewayProxyResultV2,
-} from 'aws-lambda';
+import {APIGatewayProxyEventV2, APIGatewayProxyHandlerV2, APIGatewayProxyResultV2} from 'aws-lambda';
 import {DynamoDB} from 'aws-sdk';
 import {v4} from 'uuid';
 import Ajv, {JSONSchemaType} from 'ajv';
@@ -74,10 +70,7 @@ const isJson = (s: string): boolean => {
 };
 
 // Fetch a list of movies from the specified parameters and create a new movie list
-const createPartyMovies = async (
-  partyId: string,
-  body: Body,
-): Promise<void> => {
+const createPartyMovies = async (partyId: string, body: Body): Promise<void> => {
   const {genres, minYear, maxYear, minRating, maxRating, maxSwipes} = body;
 
   // Get range of all ratings
@@ -94,12 +87,7 @@ const createPartyMovies = async (
     await forEach(ratings, async rating => {
       // Get movie group from DB
       logger.debug(`Trying to query group: movie-group#${genre}#${rating}`);
-      const group = await movieGroupsRepo.getMovieGroup(
-        genre,
-        rating,
-        minYear,
-        maxYear,
-      );
+      const group = await movieGroupsRepo.getMovieGroup(genre, rating, minYear, maxYear);
       group.forEach(grouping => {
         // Check for duplicates
         if (!seenMovies.has(grouping.movieId)) {
@@ -123,10 +111,7 @@ const createPartyMovies = async (
 };
 
 // Create a new party member, the owner
-const createPartyMember = async (
-  partyId: string,
-  user: JwtPayload,
-): Promise<void> => {
+const createPartyMember = async (partyId: string, user: JwtPayload): Promise<void> => {
   const now = new Date();
   await membersRepo.save({
     partyId,
@@ -155,8 +140,7 @@ const createParty = async (body: Body, user: JwtPayload): Promise<Party> => {
     backoffs += 1;
     joinCode = randomString(codeLength);
 
-    if (backoffs === maxRetries)
-      throw new Error('Unable to generate unique join code.');
+    if (backoffs === maxRetries) throw new Error('Unable to generate unique join code.');
   }
 
   // persist party to database
@@ -183,8 +167,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (
 
     // Validate request body
     const {body} = event;
-    if (body === undefined || !isJson(body) || !validate(JSON.parse(body)))
-      return httpError(400, 'Invalid payload.');
+    if (body === undefined || !isJson(body) || !validate(JSON.parse(body))) return httpError(400, 'Invalid payload.');
 
     const inp = JSON.parse(body) as Body;
 

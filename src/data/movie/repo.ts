@@ -73,8 +73,7 @@ export default class MoviesRepo implements IMoviesRepo {
     const data = await this.dynamodb.query(params).promise();
 
     // Throw error if no movie found
-    if (data.Items === undefined || data.Count === 0)
-      throw new NotFound(movieId);
+    if (data.Items === undefined || data.Count === 0) throw new NotFound(movieId);
 
     // Map from DB format
     return MovieMapper.fromDB(data.Items[0] as DynamoMovie);
@@ -96,8 +95,7 @@ export default class MoviesRepo implements IMoviesRepo {
     const data = await this.dynamodb.query(params).promise();
 
     // Throw error if no movie found
-    if (data.Items === undefined || data.Count === 0)
-      throw new NotFound(imdbId);
+    if (data.Items === undefined || data.Count === 0) throw new NotFound(imdbId);
 
     // Map from DB format
     return MovieMapper.fromDB(data.Items[0] as DynamoMovie);
@@ -123,9 +121,7 @@ export default class MoviesRepo implements IMoviesRepo {
     if (data.Items === undefined) throw new NotFound(String(year), 'year');
 
     // Map from DB format
-    const movies = data.Items?.map(item =>
-      MovieMapper.fromDB(item as DynamoMovie),
-    );
+    const movies = data.Items?.map(item => MovieMapper.fromDB(item as DynamoMovie));
 
     return movies;
   }

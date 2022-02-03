@@ -58,10 +58,7 @@ export default class MembersRepo implements IMembersRepo {
   }
 
   // Check get a party member by their party ID and user ID
-  public async getMemberByIds(
-    partyId: string,
-    memberId: string,
-  ): Promise<Member> {
+  public async getMemberByIds(partyId: string, memberId: string): Promise<Member> {
     const params = {
       TableName: DYNAMO_TABLE,
       ExpressionAttributeValues: {
@@ -75,8 +72,7 @@ export default class MembersRepo implements IMembersRepo {
     const data = await this.dynamodb.query(params).promise();
 
     // Throw error if no party found
-    if (data.Items === undefined || data.Count === 0)
-      throw new NotFound(`${partyId}#${memberId}`);
+    if (data.Items === undefined || data.Count === 0) throw new NotFound(`${partyId}#${memberId}`);
 
     // Map from DB format
     return MemberMapper.fromDB(data.Items[0] as DynamoMember);

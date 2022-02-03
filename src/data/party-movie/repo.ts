@@ -84,10 +84,7 @@ export default class PartyMoviesRepo implements IPartyMoviesRepo {
   }
 
   // Get a single movie by its party ID and movie ID
-  public async getMovieByIds(
-    partyId: string,
-    movieId: string,
-  ): Promise<PartyMovie> {
+  public async getMovieByIds(partyId: string, movieId: string): Promise<PartyMovie> {
     const params = {
       TableName: DYNAMO_TABLE,
       ExpressionAttributeValues: {
@@ -101,8 +98,7 @@ export default class PartyMoviesRepo implements IPartyMoviesRepo {
     const data = await this.dynamodb.query(params).promise();
 
     // Throw error if no party found
-    if (data.Items === undefined || data.Count === 0)
-      throw new NotFound(`${partyId}#${movieId}`);
+    if (data.Items === undefined || data.Count === 0) throw new NotFound(`${partyId}#${movieId}`);
 
     // Map from DB format
     return PartyMovieMapper.fromDB(data.Items[0] as DynamoPartyMovie);
@@ -140,8 +136,6 @@ export default class PartyMoviesRepo implements IPartyMoviesRepo {
     if (data.Items === undefined) throw new NotFound(partyId);
 
     // Map from DB format
-    return data.Items.map(item =>
-      PartyMovieMapper.fromDB(item as DynamoPartyMovie),
-    );
+    return data.Items.map(item => PartyMovieMapper.fromDB(item as DynamoPartyMovie));
   }
 }

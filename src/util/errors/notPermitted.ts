@@ -5,9 +5,7 @@ import HttpError from './httpError';
  * necessary permissions to perform a task.
  */
 export default class NotPermitted extends HttpError {
-  constructor(
-    msg = 'User does not have necessary permission to complete this task.',
-  ) {
+  constructor(msg = 'User does not have necessary permission to complete this task.') {
     super(403, msg);
 
     // set prototype excplicitly

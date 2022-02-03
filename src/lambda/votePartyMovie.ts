@@ -1,8 +1,4 @@
-import {
-  APIGatewayProxyEventV2,
-  APIGatewayProxyHandlerV2,
-  APIGatewayProxyResultV2,
-} from 'aws-lambda';
+import {APIGatewayProxyEventV2, APIGatewayProxyHandlerV2, APIGatewayProxyResultV2} from 'aws-lambda';
 import {DynamoDB} from 'aws-sdk';
 
 import {logger} from '../util/logging';
@@ -35,8 +31,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (
 
     // Ensure user is party member
     logger.debug('Checking if user is a party member...');
-    if (!(await membersRepo.existsIds(partyId, user.sub)))
-      throw new NotPermitted();
+    if (!(await membersRepo.existsIds(partyId, user.sub))) throw new NotPermitted();
 
     // Update movie votes
     logger.debug('Fetching movie...');

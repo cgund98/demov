@@ -23,6 +23,17 @@ const sqsDestination = process.env.SQS_DESTINATION || '';
 const imageHeightHR = 1000;
 const imageHeightLR = 200;
 
+if (bucketName === '') {
+  const msg = 'No bucket name parsed from environment.';
+  logger.crit(msg);
+  throw new Error(msg);
+}
+if (sqsDestination === '') {
+  const msg = 'No SQS destination parsed from environment.';
+  logger.crit(msg);
+  throw new Error(msg);
+}
+
 // Define Interfaces
 interface Input {
   imdbId: string;
@@ -166,9 +177,7 @@ export const handler: SQSHandler = async (event: SQSEvent) => {
   try {
     // Fetch secret
     if (omdbToken === '') {
-      const data = await ssm
-        .getParameter({Name: '/dev/omdb-token', WithDecryption: true})
-        .promise();
+      const data = await ssm.getParameter({Name: '/dev/omdb-token', WithDecryption: true}).promise();
       omdbToken = data.Parameter?.Value || '';
     }
 

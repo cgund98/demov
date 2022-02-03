@@ -1,8 +1,4 @@
-import {
-  APIGatewayProxyEventV2,
-  APIGatewayProxyResultV2,
-  APIGatewayProxyHandlerV2,
-} from 'aws-lambda';
+import {APIGatewayProxyEventV2, APIGatewayProxyResultV2, APIGatewayProxyHandlerV2} from 'aws-lambda';
 import {DynamoDB} from 'aws-sdk';
 
 import MembersRepo from '../data/party-member/repo';
@@ -29,8 +25,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (
     const user = await checkJwt(event);
 
     // Ensure user is in a member of party
-    if (!(await membersRepo.existsIds(partyId, user.sub)))
-      throw new NotPermitted();
+    if (!(await membersRepo.existsIds(partyId, user.sub))) throw new NotPermitted();
 
     // Fetch party movies
     const movies = await partyMoviesRepo.getMoviesByPartyId(partyId);

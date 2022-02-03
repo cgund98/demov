@@ -79,8 +79,7 @@ export default class PartiesRepo implements IPartiesRepo {
     const data = await this.dynamodb.query(params).promise();
 
     // Throw error if no party found
-    if (data.Items === undefined || data.Count === 0)
-      throw new NotFound(joinCode);
+    if (data.Items === undefined || data.Count === 0) throw new NotFound(joinCode);
 
     // Map from DB format
     return PartyMapper.fromDB(data.Items[0] as DynamoParty);
@@ -113,8 +112,7 @@ export default class PartiesRepo implements IPartiesRepo {
     const data = await this.dynamodb.query(params).promise();
 
     // Throw error if no party found
-    if (data.Items === undefined || data.Count === 0)
-      throw new NotFound(partyId);
+    if (data.Items === undefined || data.Count === 0) throw new NotFound(partyId);
 
     // Map from DB format
     return PartyMapper.fromDB(data.Items[0] as DynamoParty);

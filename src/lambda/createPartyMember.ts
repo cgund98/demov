@@ -1,8 +1,4 @@
-import {
-  APIGatewayProxyEventV2,
-  APIGatewayProxyResultV2,
-  APIGatewayProxyHandlerV2,
-} from 'aws-lambda';
+import {APIGatewayProxyEventV2, APIGatewayProxyResultV2, APIGatewayProxyHandlerV2} from 'aws-lambda';
 import {DynamoDB} from 'aws-sdk';
 
 import MembersRepo from '../data/party-member/repo';
@@ -38,8 +34,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (
     else party = await partiesRepo.getPartyByJoinCode(joinCode);
 
     // See if member already exists
-    if (await membersRepo.existsIds(party.partyId, user.sub))
-      throw new Conflict();
+    if (await membersRepo.existsIds(party.partyId, user.sub)) throw new Conflict();
 
     // Create new party member
     const now = new Date();

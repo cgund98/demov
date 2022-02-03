@@ -3,6 +3,7 @@ import * as dynamodb from '@aws-cdk/aws-dynamodb';
 import * as sqs from '@aws-cdk/aws-sqs';
 import * as ssm from '@aws-cdk/aws-ssm';
 import * as s3 from '@aws-cdk/aws-s3';
+import * as iam from '@aws-cdk/aws-iam';
 import * as apigateway from '@aws-cdk/aws-apigateway';
 import {NodejsFunction} from '@aws-cdk/aws-lambda-nodejs';
 import {SqsEventSource} from '@aws-cdk/aws-lambda-event-sources';
@@ -16,26 +17,24 @@ export class DemovServiceStack extends cdk.Stack {
     super(scope, id, props);
 
     /** Secrets  */
-    const omdbToken = ssm.StringParameter.fromSecureStringParameterAttributes(
-      this,
-      'imported-omdb-token',
-      {
-        parameterName: '/dev/omdb-token',
-      },
-    );
+    const omdbToken = ssm.StringParameter.fromSecureStringParameterAttributes(this, 'imported-omdb-token', {
+      parameterName: '/dev/omdb-token',
+    });
 
-    const jwtSecret = ssm.StringParameter.fromSecureStringParameterAttributes(
-      this,
-      'imported-jwt-secret',
-      {
-        parameterName: '/dev/jwt-secret',
-      },
-    );
+    const jwtSecret = ssm.StringParameter.fromSecureStringParameterAttributes(this, 'imported-jwt-secret', {
+      parameterName: '/dev/jwt-secret',
+    });
 
     /** S3 Bucket  */
     const bucket = new s3.Bucket(this, envSpecific('demov-public'), {
       publicReadAccess: true,
     });
+
+    const executeRole = new iam.Role(this, 'role', {
+      assumedBy: new iam.ServicePrincipal('apigateway.amazonaws.com'),
+      path: '/service-role/',
+    });
+    bucket.grantReadWrite(executeRole);
 
     /** DynamoDB Tables */
 
@@ -66,9 +65,11 @@ export class DemovServiceStack extends cdk.Stack {
     const api = new apigateway.RestApi(this, envSpecific('demov-api'), {
       description: 'Primary API gateway for demov application',
       deployOptions: {
+        stageName: 'api',
         tracingEnabled: true,
         dataTraceEnabled: true,
       },
+      binaryMediaTypes: ['image/jpeg', 'image/png'],
     });
 
     /** Lambda functions */
@@ -105,6 +106,11 @@ export class DemovServiceStack extends cdk.Stack {
     // enrichMovie
     const enrichMovie = new NodejsFunction(this, 'enrich-movie', {
       ...commonLambda,
+      environment: {
+        ...commonLambda.environment,
+        BUCKET_NAME: bucket.bucketName,
+        SQS_DESTINATION: createMoviesSQS.queueUrl,
+      },
       timeout: cdk.Duration.seconds(30),
       entry: path.join(__dirname, `/../src/lambda/enrichMovie.ts`),
     });
@@ -137,16 +143,12 @@ export class DemovServiceStack extends cdk.Stack {
     table.grantReadData(getMovieImdb);
 
     // createMovieGroup
-    const createMovieGroupsLambda = new NodejsFunction(
-      this,
-      'create-movie-groups',
-      {
-        ...commonLambda,
-        timeout: cdk.Duration.seconds(60),
-        memorySize: 512,
-        entry: path.join(__dirname, `/../src/lambda/createMovieGroups.ts`),
-      },
-    );
+    const createMovieGroupsLambda = new NodejsFunction(this, 'create-movie-groups', {
+      ...commonLambda,
+      timeout: cdk.Duration.seconds(60),
+      memorySize: 512,
+      entry: path.join(__dirname, `/../src/lambda/createMovieGroups.ts`),
+    });
 
     table.grantReadWriteData(createMovieGroupsLambda);
 
@@ -230,62 +232,87 @@ export class DemovServiceStack extends cdk.Stack {
     /** Integrate lambdas with Lambda */
 
     // Movies
-    const movies = api.root.addResource('movies');
+    const v1 = api.root.addResource('v1');
+    const movies = v1.addResource('movies');
     const movie = movies.addResource('{movieId}');
     movie.addMethod('GET', new apigateway.LambdaIntegration(getMovie));
 
-    const imdbs = api.root.addResource('imdb');
+    const imdbs = v1.addResource('imdb');
     const imdb = imdbs.addResource('{imdbId}');
     imdb.addMethod('GET', new apigateway.LambdaIntegration(getMovieImdb));
 
-    const groups = api.root.addResource('groups');
+    const groups = v1.addResource('groups');
     const movieGroups = groups.addResource('movies');
-    movieGroups.addMethod(
-      'GET',
-      new apigateway.LambdaIntegration(getMovieGroupLambda),
-    );
+    movieGroups.addMethod('GET', new apigateway.LambdaIntegration(getMovieGroupLambda));
 
     // Authentication
-    const login = api.root.addResource('login');
+    const login = v1.addResource('login');
     login.addMethod('POST', new apigateway.LambdaIntegration(loginLambda));
 
     // Parties
-    const parties = api.root.addResource('parties');
-    parties.addMethod(
-      'POST',
-      new apigateway.LambdaIntegration(createPartyLambda),
-    );
+    const parties = v1.addResource('parties');
+    parties.addMethod('POST', new apigateway.LambdaIntegration(createPartyLambda));
     const party = parties.addResource('{partyId}');
     party.addMethod('GET', new apigateway.LambdaIntegration(getParty));
     party.addMethod('PUT', new apigateway.LambdaIntegration(startParty));
 
     // Party members
     const partyMembers = party.addResource('members');
-    partyMembers.addMethod(
-      'GET',
-      new apigateway.LambdaIntegration(getPartyMembers),
-    );
-    partyMembers.addMethod(
-      'POST',
-      new apigateway.LambdaIntegration(createPartyMember),
-    );
+    partyMembers.addMethod('GET', new apigateway.LambdaIntegration(getPartyMembers));
+    partyMembers.addMethod('POST', new apigateway.LambdaIntegration(createPartyMember));
 
     // Party movies
     const partyMovies = party.addResource('movies');
-    partyMovies.addMethod(
-      'GET',
-      new apigateway.LambdaIntegration(getPartyMovies),
-    );
+    partyMovies.addMethod('GET', new apigateway.LambdaIntegration(getPartyMovies));
 
     const partyMovie = partyMovies.addResource('{movieId}');
-    partyMovie.addMethod(
-      'PUT',
-      new apigateway.LambdaIntegration(votePartyMovie),
-    );
+    partyMovie.addMethod('PUT', new apigateway.LambdaIntegration(votePartyMovie));
 
     // Join party by code
-    const join = api.root.addResource('join');
+    const join = v1.addResource('join');
     const code = join.addResource('{joinCode}');
     code.addMethod('POST', new apigateway.LambdaIntegration(createPartyMember));
+
+    // Proxy image requests to S3
+    const images = v1.addResource('images');
+    const imageFolder = images.addResource('{folder}');
+    const imageKey = imageFolder.addResource('{key}');
+
+    const s3Integration = new apigateway.AwsIntegration({
+      service: 's3',
+      path: `${bucket.bucketName}/images/{folder}/{key}`,
+      integrationHttpMethod: 'GET',
+      options: {
+        credentialsRole: executeRole,
+        integrationResponses: [
+          {
+            statusCode: '200',
+            responseParameters: {
+              'method.response.header.Content-Type': 'integration.response.header.Content-Type',
+            },
+          },
+        ],
+        requestParameters: {
+          'integration.request.path.key': 'method.request.path.key',
+          'integration.request.path.folder': 'method.request.path.folder',
+        },
+      },
+    });
+
+    imageKey.addMethod('GET', s3Integration, {
+      methodResponses: [
+        {
+          statusCode: '200',
+          responseParameters: {
+            'method.response.header.Content-Type': true,
+          },
+        },
+      ],
+      requestParameters: {
+        'method.request.path.folder': true,
+        'method.request.path.key': true,
+        'method.request.header.Content-Type': true,
+      },
+    });
   }
 }

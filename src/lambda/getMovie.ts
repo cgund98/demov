@@ -1,8 +1,4 @@
-import {
-  APIGatewayProxyEventV2,
-  APIGatewayProxyResultV2,
-  APIGatewayProxyHandlerV2,
-} from 'aws-lambda';
+import {APIGatewayProxyEventV2, APIGatewayProxyResultV2, APIGatewayProxyHandlerV2} from 'aws-lambda';
 import {DynamoDB} from 'aws-sdk';
 
 import MoviesRepo from '../data/movie/repo';

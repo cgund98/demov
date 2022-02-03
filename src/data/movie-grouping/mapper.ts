@@ -4,10 +4,7 @@ import {MovieGrouping, DynamoMovieGrouping} from './entity';
 /**
  * MovieGroupingMapper maps movie objects between state store and logical formats.
  */
-export const MovieGroupingMapper: Mapper<
-  MovieGrouping,
-  DynamoMovieGrouping
-> = class {
+export const MovieGroupingMapper: Mapper<MovieGrouping, DynamoMovieGrouping> = class {
   // Convert to state store format
   public static toDB(movie: MovieGrouping): DynamoMovieGrouping {
     return {
