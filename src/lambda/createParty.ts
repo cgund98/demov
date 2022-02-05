@@ -16,6 +16,7 @@ import {PartyMovie} from '../data/party-movie/entity';
 import {shuffle} from '../util/shuffle';
 
 import {randomString} from '../util/random';
+import {decodeB64} from '../util/base64';
 
 // Initialize clients
 const dynamodb = new DynamoDB.DocumentClient();
@@ -27,6 +28,7 @@ const movieGroupsRepo = new MovieGroupsRepo(dynamodb);
 // Constants
 const codeLength = 7;
 const maxRetries = 10;
+const maxRating = 10;
 
 // Interfaces
 interface Body {
@@ -34,7 +36,6 @@ interface Body {
   minYear: number;
   maxYear: number;
   minRating: number;
-  maxRating: number;
   maxSwipes: number;
 }
 
@@ -52,10 +53,9 @@ const schema: JSONSchemaType<Body> = {
     minYear: {type: 'integer', nullable: false, minimum: 1980, maximum: 2025},
     maxYear: {type: 'integer', nullable: false, minimum: 1980, maximum: 2025},
     minRating: {type: 'integer', nullable: false, minimum: 0, maximum: 10},
-    maxRating: {type: 'integer', nullable: false, minimum: 0, maximum: 10},
     maxSwipes: {type: 'integer', nullable: false, maximum: 150, minimum: 25},
   },
-  required: ['genres', 'minYear', 'maxYear', 'maxSwipes'],
+  required: ['genres', 'minYear', 'maxYear', 'maxSwipes', 'minRating'],
   additionalProperties: false,
 };
 const validate = ajv.compile(schema);
@@ -71,7 +71,7 @@ const isJson = (s: string): boolean => {
 
 // Fetch a list of movies from the specified parameters and create a new movie list
 const createPartyMovies = async (partyId: string, body: Body): Promise<void> => {
-  const {genres, minYear, maxYear, minRating, maxRating, maxSwipes} = body;
+  const {genres, minYear, maxYear, minRating, maxSwipes} = body;
 
   // Get range of all ratings
   const ratings: number[] = [];
@@ -166,8 +166,11 @@ export const handler: APIGatewayProxyHandlerV2 = async (
     const user = await checkJwt(event);
 
     // Validate request body
-    const {body} = event;
-    if (body === undefined || !isJson(body) || !validate(JSON.parse(body))) return httpError(400, 'Invalid payload.');
+    const body = event.isBase64Encoded ? decodeB64(event.body || '') : event.body;
+    if (body === undefined) return httpError(400, 'No request body given.');
+    if (!isJson(body)) return httpError(400, 'Request body does not appear to be valid JSON');
+    if (!validate(JSON.parse(body)))
+      return httpError(400, `Invalid payload: ${validate.errors ? JSON.stringify(validate.errors) : ''}`);
 
     const inp = JSON.parse(body) as Body;
 

@@ -7,6 +7,7 @@ import Ajv, {JSONSchemaType} from 'ajv';
 import {logger} from '../util/logging';
 import {httpError} from '../util/errors';
 import {JWT_SECRET_SECRET} from '../util/config';
+import {decodeB64} from '../util/base64';
 
 // Initialize clients
 const ssm = new SSM();
@@ -49,11 +50,14 @@ const generateJWT = (name: string): string => {
 export const handler: APIGatewayProxyHandlerV2 = async (
   event: APIGatewayProxyEventV2,
 ): Promise<APIGatewayProxyResultV2> => {
-  logger.info('Body: ', event.body);
+  logger.debug(`Body: ${event.body || ''}`);
 
   // Validate request body
-  const {body} = event;
-  if (body === undefined || !isJson(body) || !validate(JSON.parse(body))) return httpError(400, 'Invalid payload.');
+  const body = event.isBase64Encoded ? decodeB64(event.body || '') : event.body;
+  if (body === undefined) return httpError(400, 'No request body given.');
+  if (!isJson(body)) return httpError(400, 'Request body does not appear to be valid JSON');
+  if (!validate(JSON.parse(body)))
+    return httpError(400, `Invalid payload: ${validate.errors ? JSON.stringify(validate.errors) : ''}`);
 
   const {name} = JSON.parse(body) as Body;
 
