@@ -17,6 +17,7 @@ import {shuffle} from '../util/shuffle';
 
 import {randomString} from '../util/random';
 import {decodeB64} from '../util/base64';
+import BadRequest from '../util/errors/badRequest';
 
 // Initialize clients
 const dynamodb = new DynamoDB.DocumentClient();
@@ -167,10 +168,10 @@ export const handler: APIGatewayProxyHandlerV2 = async (
 
     // Validate request body
     const body = event.isBase64Encoded ? decodeB64(event.body || '') : event.body;
-    if (body === undefined) return httpError(400, 'No request body given.');
-    if (!isJson(body)) return httpError(400, 'Request body does not appear to be valid JSON');
+    if (body === undefined) throw new BadRequest('No request body given.');
+    if (!isJson(body)) throw new BadRequest('Request body does not appear to be valid JSON');
     if (!validate(JSON.parse(body)))
-      return httpError(400, `Invalid payload: ${validate.errors ? JSON.stringify(validate.errors) : ''}`);
+      throw new BadRequest(`Invalid payload: ${validate.errors ? JSON.stringify(validate.errors) : ''}`);
 
     const inp = JSON.parse(body) as Body;
 

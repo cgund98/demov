@@ -1,5 +1,5 @@
 import {Mapper} from '../mapper';
-import {Party, DynamoParty} from './entity';
+import {Party, DynamoParty, PartyStatus} from './entity';
 
 /**
  * PartyMapper maps party objects between state store and logical formats.
@@ -25,7 +25,7 @@ export const PartyMapper: Mapper<Party, DynamoParty> = class {
       ownerId: dyParty.ownerId,
       creationTime: dyParty.sk2,
       lastModified: dyParty.lastModified,
-      status: dyParty.status,
+      status: dyParty.status as PartyStatus,
     };
   }
 };

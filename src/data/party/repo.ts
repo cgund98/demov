@@ -91,6 +91,7 @@ export default class PartiesRepo implements IPartiesRepo {
       TableName: DYNAMO_TABLE,
       Key: {
         pk: `party#${party.partyId}`,
+        sk: `join-code#${party.joinCode}`,
       },
     };
 

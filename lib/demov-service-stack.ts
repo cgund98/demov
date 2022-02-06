@@ -4,13 +4,14 @@ import * as sqs from '@aws-cdk/aws-sqs';
 import * as ssm from '@aws-cdk/aws-ssm';
 import * as s3 from '@aws-cdk/aws-s3';
 import * as iam from '@aws-cdk/aws-iam';
+import * as acm from '@aws-cdk/aws-certificatemanager';
 import * as apigateway from '@aws-cdk/aws-apigateway';
 import {NodejsFunction} from '@aws-cdk/aws-lambda-nodejs';
 import {SqsEventSource} from '@aws-cdk/aws-lambda-event-sources';
 import * as cdk from '@aws-cdk/core';
 import * as path from 'path';
 
-import {envSpecific} from '../src/util/environ';
+import {deployEnv, envSpecific} from '../src/util/environ';
 
 export class DemovServiceStack extends cdk.Stack {
   constructor(scope: cdk.App, id: string, props?: cdk.StackProps) {
@@ -61,6 +62,12 @@ export class DemovServiceStack extends cdk.Stack {
     const enrichMoviesSQS = new sqs.Queue(this, 'enrich-movies');
     const createMoviesSQS = new sqs.Queue(this, 'create-movies');
 
+    new cdk.CfnOutput(this, 'enrichmentSqsQueue', {
+      value: enrichMoviesSQS.queueUrl,
+      description: 'The URl of the movie enrichment SQS queue',
+      exportName: 'enrichmentSqsQueue',
+    });
+
     /** API Gateway  */
     const api = new apigateway.RestApi(this, envSpecific('demov-api'), {
       description: 'Primary API gateway for demov application',
@@ -69,8 +76,20 @@ export class DemovServiceStack extends cdk.Stack {
         tracingEnabled: true,
         dataTraceEnabled: true,
       },
-      binaryMediaTypes: ['image/jpeg', 'image/png'],
+      binaryMediaTypes: ['*/*'],
     });
+
+    const cert = acm.Certificate.fromCertificateArn(
+      this,
+      'cert',
+      'arn:aws:acm:us-east-2:178852309825:certificate/cd5cedef-1b11-4f05-bc76-f0010d43da57',
+    );
+
+    const domain = new apigateway.DomainName(this, 'domain-name', {
+      domainName: `${deployEnv()}.demov.app`,
+      certificate: cert,
+    });
+    domain.addBasePathMapping(api, {stage: api.deploymentStage});
 
     /** Lambda functions */
 
@@ -211,6 +230,15 @@ export class DemovServiceStack extends cdk.Stack {
     jwtSecret.grantRead(startParty);
     table.grantReadWriteData(startParty);
 
+    // deleteParty
+    const deleteParty = new NodejsFunction(this, 'delete-party', {
+      ...commonLambda,
+      entry: path.join(__dirname, `/../src/lambda/deleteParty.ts`),
+    });
+
+    jwtSecret.grantRead(deleteParty);
+    table.grantReadWriteData(deleteParty);
+
     // votePartyMovie
     const votePartyMovie = new NodejsFunction(this, 'vote-party-movie', {
       ...commonLambda,
@@ -228,6 +256,15 @@ export class DemovServiceStack extends cdk.Stack {
 
     jwtSecret.grantRead(createPartyMember);
     table.grantReadWriteData(createPartyMember);
+
+    // deletePartyMember
+    const deletePartyMember = new NodejsFunction(this, 'delete-party-member', {
+      ...commonLambda,
+      entry: path.join(__dirname, `/../src/lambda/deletePartyMember.ts`),
+    });
+
+    jwtSecret.grantRead(deletePartyMember);
+    table.grantReadWriteData(deletePartyMember);
 
     /** Integrate lambdas with Lambda */
 
@@ -255,11 +292,16 @@ export class DemovServiceStack extends cdk.Stack {
     const party = parties.addResource('{partyId}');
     party.addMethod('GET', new apigateway.LambdaIntegration(getParty));
     party.addMethod('PUT', new apigateway.LambdaIntegration(startParty));
+    party.addMethod('DELETE', new apigateway.LambdaIntegration(deleteParty));
 
     // Party members
     const partyMembers = party.addResource('members');
     partyMembers.addMethod('GET', new apigateway.LambdaIntegration(getPartyMembers));
     partyMembers.addMethod('POST', new apigateway.LambdaIntegration(createPartyMember));
+
+    // Delete member
+    const partyMember = partyMembers.addResource('{memberId}');
+    partyMember.addMethod('DELETE', new apigateway.LambdaIntegration(deletePartyMember));
 
     // Party movies
     const partyMovies = party.addResource('movies');

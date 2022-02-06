@@ -5,9 +5,10 @@ import {v4} from 'uuid';
 import Ajv, {JSONSchemaType} from 'ajv';
 
 import {logger} from '../util/logging';
-import {httpError} from '../util/errors';
+import {HttpError, httpError} from '../util/errors';
 import {JWT_SECRET_SECRET} from '../util/config';
 import {decodeB64} from '../util/base64';
+import BadRequest from '../util/errors/badRequest';
 
 // Initialize clients
 const ssm = new SSM();
@@ -52,31 +53,40 @@ export const handler: APIGatewayProxyHandlerV2 = async (
 ): Promise<APIGatewayProxyResultV2> => {
   logger.debug(`Body: ${event.body || ''}`);
 
-  // Validate request body
-  const body = event.isBase64Encoded ? decodeB64(event.body || '') : event.body;
-  if (body === undefined) return httpError(400, 'No request body given.');
-  if (!isJson(body)) return httpError(400, 'Request body does not appear to be valid JSON');
-  if (!validate(JSON.parse(body)))
-    return httpError(400, `Invalid payload: ${validate.errors ? JSON.stringify(validate.errors) : ''}`);
+  try {
+    // Validate request body
+    const body = event.isBase64Encoded ? decodeB64(event.body || '') : event.body;
+    if (body === undefined) throw new BadRequest('No request body given.');
+    if (!isJson(body)) throw new BadRequest('Request body does not appear to be valid JSON');
+    if (!validate(JSON.parse(body)))
+      throw new BadRequest(`Invalid payload: ${validate.errors ? JSON.stringify(validate.errors) : ''}`);
 
-  const {name} = JSON.parse(body) as Body;
+    const {name} = JSON.parse(body) as Body;
 
-  // Fetch secret
-  if (secret === '') {
-    try {
-      const data = await ssm.getParameter({Name: JWT_SECRET_SECRET, WithDecryption: true}).promise();
-      secret = data.Parameter?.Value || '';
-    } catch (err) {
-      logger.error(err);
-      return httpError();
+    // Fetch secret
+    if (secret === '') {
+      try {
+        const data = await ssm.getParameter({Name: JWT_SECRET_SECRET, WithDecryption: true}).promise();
+        secret = data.Parameter?.Value || '';
+      } catch (err) {
+        logger.error(err);
+        return httpError();
+      }
     }
+
+    // Generate JWT
+    const token = generateJWT(name);
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify({token}),
+    };
+  } catch (err) {
+    if (err instanceof HttpError) {
+      return err.serialize();
+    }
+
+    logger.error(err);
+    return httpError();
   }
-
-  // Generate JWT
-  const token = generateJWT(name);
-
-  return {
-    statusCode: 200,
-    body: JSON.stringify({token}),
-  };
 };
