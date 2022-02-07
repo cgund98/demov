@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, {AxiosRequestConfig} from 'axios';
 import {S3, SQS, SSM} from 'aws-sdk';
 import {SQSEvent, SQSHandler} from 'aws-lambda';
 
@@ -21,7 +21,18 @@ const bucketName = process.env.BUCKET_NAME || '';
 let omdbToken = '';
 const sqsDestination = process.env.SQS_DESTINATION || '';
 const imageHeightHR = 1000;
-const imageHeightLR = 200;
+const imageHeightLR = 100;
+
+if (bucketName === '') {
+  const msg = 'No bucket name parsed from environment.';
+  logger.crit(msg);
+  throw new Error(msg);
+}
+if (sqsDestination === '') {
+  const msg = 'No SQS destination parsed from environment.';
+  logger.crit(msg);
+  throw new Error(msg);
+}
 
 // Define Interfaces
 interface Input {
@@ -79,12 +90,13 @@ const scrapeImage = async (imdbId: string): Promise<ImageOuts> => {
 
   // Get high res image
   const params = {i: imdbId, h: imageHeightHR, apikey: omdbToken};
-  let response = await httpClient.get(url, {
+  const config: AxiosRequestConfig = {
     params,
     decompress: false,
     // Ref: https://stackoverflow.com/a/61621094/4050261
     responseType: 'arraybuffer',
-  });
+  };
+  let response = await httpClient.get(url, config);
 
   // Upload high res image to S3
   let s3params = {
@@ -97,8 +109,13 @@ const scrapeImage = async (imdbId: string): Promise<ImageOuts> => {
   await s3.upload(s3params).promise();
 
   // Get low res image
-  params.h = imageHeightLR;
-  response = await httpClient.get(url, {params});
+  config.params = {...params, h: imageHeightLR};
+  response = await httpClient.get(url, {
+    params,
+    decompress: false,
+    // Ref: https://stackoverflow.com/a/61621094/4050261
+    responseType: 'arraybuffer',
+  });
 
   // Upload low res image to S3
   s3params = {
@@ -166,16 +183,21 @@ export const handler: SQSHandler = async (event: SQSEvent) => {
   try {
     // Fetch secret
     if (omdbToken === '') {
-      const data = await ssm
-        .getParameter({Name: '/dev/omdb-token', WithDecryption: true})
-        .promise();
+      const data = await ssm.getParameter({Name: '/dev/omdb-token', WithDecryption: true}).promise();
       omdbToken = data.Parameter?.Value || '';
     }
 
     await forEach(event.Records, async record => {
       // Fetch additional data
       const inp = JSON.parse(record.body) as Input;
-      const out = await scrapeMovie(inp);
+      let out: Output;
+      try {
+        out = await scrapeMovie(inp);
+      } catch (err) {
+        if (axios.isAxiosError(err) && err.response?.status === 404) return;
+
+        throw err;
+      }
 
       // Send output to SQS
       const params = {

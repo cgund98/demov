@@ -1,13 +1,11 @@
 import {DynamoDB} from 'aws-sdk';
-import {
-  APIGatewayProxyEventV2,
-  APIGatewayProxyHandlerV2,
-  APIGatewayProxyResultV2,
-} from 'aws-lambda';
+import {APIGatewayProxyEventV2, APIGatewayProxyHandlerV2, APIGatewayProxyResultV2} from 'aws-lambda';
 
 import MovieGroupsRepo from '../data/movie-grouping/repo';
 import {logger} from '../util/logging';
 import {httpError} from '../util/errors';
+import HttpError from '../util/errors/httpError';
+import {checkJwt} from '../util/jwt';
 
 // Init clients
 const dynamodb = new DynamoDB.DocumentClient();
@@ -29,8 +27,7 @@ const validateParams = (event: APIGatewayProxyEventV2): string => {
   const query = event.queryStringParameters;
 
   // Validate genre
-  if (query.genre === undefined || query.genre === '')
-    return 'No genre specified';
+  if (query.genre === undefined || query.genre === '') return 'No genre specified';
 
   // Validate ratingTrunc
   let exists = query.ratingTrunc !== undefined;
@@ -39,13 +36,11 @@ const validateParams = (event: APIGatewayProxyEventV2): string => {
 
   // Validate minYear
   exists = query.minYear !== undefined;
-  if (!exists || Number.isNaN(parseInt(query.minYear || '', 10)))
-    return `Invalid minYear: '${query.minYear || ''}'`;
+  if (!exists || Number.isNaN(parseInt(query.minYear || '', 10))) return `Invalid minYear: '${query.minYear || ''}'`;
 
   // Validate maxYear
   exists = query.maxYear !== undefined;
-  if (!exists || Number.isNaN(parseInt(query.maxYear || '', 10)))
-    return `Invalid maxYear: '${query.maxYear || ''}'`;
+  if (!exists || Number.isNaN(parseInt(query.maxYear || '', 10))) return `Invalid maxYear: '${query.maxYear || ''}'`;
 
   return '';
 };
@@ -81,18 +76,19 @@ export const handler: APIGatewayProxyHandlerV2 = async (
   const {genre, ratingTrunc, minYear, maxYear} = readParams(event);
 
   try {
-    const group = await movieGroupsRepo.getMovieGroup(
-      genre,
-      ratingTrunc,
-      minYear,
-      maxYear,
-    );
+    await checkJwt(event);
+
+    const group = await movieGroupsRepo.getMovieGroup(genre, ratingTrunc, minYear, maxYear);
 
     return {
       statusCode: 200,
       body: JSON.stringify(group),
     };
   } catch (err) {
+    if (err instanceof HttpError) {
+      return err.serialize();
+    }
+
     logger.error(err);
     return httpError();
   }

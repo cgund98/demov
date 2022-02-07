@@ -31,9 +31,7 @@ const fetchMovies = async (): Promise<Movie[]> => {
   for (let year = startYear; year <= endYear; year += 1) years.push(year);
 
   // Fetch movies from DB
-  const movieChunks = await Promise.all(
-    years.map(async year => moviesRepo.getMoviesByYear(year)),
-  );
+  const movieChunks = await Promise.all(years.map(async year => moviesRepo.getMoviesByYear(year)));
 
   // Flatten array
   const allMovies: Movie[] = ([] as Movie[]).concat(...movieChunks);

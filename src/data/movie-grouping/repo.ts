@@ -7,12 +7,7 @@ import {NotFound} from '../../util/errors';
 
 /** This interface extends the base repo interface and will be implemented by our movies repository */
 interface IMovieGroupsRepo {
-  getMovieGroup: (
-    genre: string,
-    ratingTrunc: number,
-    minYear: number,
-    maxYear: number,
-  ) => Promise<MovieGrouping[]>;
+  getMovieGroup: (genre: string, ratingTrunc: number, minYear: number, maxYear: number) => Promise<MovieGrouping[]>;
 }
 
 /** The movies repository persists and fetches objects from our state store */
@@ -56,15 +51,10 @@ export default class MovieGroupsRepo implements IMovieGroupsRepo {
 
     // If items are undefined, throw error.
     if (data.Items === undefined)
-      throw new NotFound(
-        `movie-group#${genre}#${ratingTrunc}, year BETWEEN ${minYear} and ${maxYear}`,
-        'group',
-      );
+      throw new NotFound(`movie-group#${genre}#${ratingTrunc}, year BETWEEN ${minYear} and ${maxYear}`, 'group');
 
     // Map from DB format
-    const movies = data.Items?.map(item =>
-      MovieGroupingMapper.fromDB(item as DynamoMovieGrouping),
-    );
+    const movies = data.Items?.map(item => MovieGroupingMapper.fromDB(item as DynamoMovieGrouping));
 
     return movies;
   }
