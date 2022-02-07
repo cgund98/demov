@@ -62,7 +62,7 @@ export class DemovServiceStack extends cdk.Stack {
     const enrichMoviesSQS = new sqs.Queue(this, 'enrich-movies');
     const createMoviesSQS = new sqs.Queue(this, 'create-movies');
 
-    new cdk.CfnOutput(this, 'enrichmentSqsQueue', {
+    new cdk.CfnOutput(this, envSpecific('enrichmentSqsQueue'), {
       value: enrichMoviesSQS.queueUrl,
       description: 'The URl of the movie enrichment SQS queue',
       exportName: 'enrichmentSqsQueue',
