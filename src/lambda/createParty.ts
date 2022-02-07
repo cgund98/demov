@@ -79,7 +79,8 @@ const createPartyMovies = async (partyId: string, body: Body): Promise<void> => 
   for (let i = minRating; i <= maxRating; i += 1) ratings.push(i);
 
   // Get all movies with given criteria
-  const seenMovies = new Set();
+  const seenMovies: Record<string, PartyMovie> = {};
+  const movieGenres: Record<string, string[] | undefined> = {};
   let movies: PartyMovie[] = [];
 
   // Iterate over each grouping
@@ -87,19 +88,27 @@ const createPartyMovies = async (partyId: string, body: Body): Promise<void> => 
   await forEach(genres, async genre => {
     await forEach(ratings, async rating => {
       // Get movie group from DB
-      logger.debug(`Trying to query group: movie-group#${genre}#${rating}`);
+      logger.debug(`Trying to query group: movie-group#${genre}#${rating} for years ${minYear}-${maxYear}`);
       const group = await movieGroupsRepo.getMovieGroup(genre, rating, minYear, maxYear);
       group.forEach(grouping => {
-        // Check for duplicates
-        if (!seenMovies.has(grouping.movieId)) {
-          seenMovies.add(grouping.movieId);
+        const curGenres = movieGenres[grouping.movieId];
 
-          // Add to list of movies
-          movies.push({partyId, movieId: grouping.movieId, score: 0});
+        // If seen before, simply append current genre to list
+        if (curGenres) movieGenres[grouping.movieId] = [...curGenres, genre];
+        // Create new entry in genres hashmap and seenMovies
+        else {
+          movieGenres[grouping.movieId] = [genre];
+          seenMovies[grouping.movieId] = {partyId, movieId: grouping.movieId, score: 0};
         }
       });
     });
   });
+
+  // Only return movies that match minimum genres
+  Object.keys(movieGenres).forEach(key => {
+    if ((movieGenres[key]?.length || 0) >= genres.length) movies.push(seenMovies[key]);
+  });
+
   logger.debug(`Found ${movies.length} total movies.`);
 
   // Shuffle list
