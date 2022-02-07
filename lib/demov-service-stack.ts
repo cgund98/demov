@@ -86,7 +86,7 @@ export class DemovServiceStack extends cdk.Stack {
     );
 
     const domain = new apigateway.DomainName(this, 'domain-name', {
-      domainName: `${deployEnv()}.demov.app`,
+      domainName: `api-${deployEnv()}.demov.app`,
       certificate: cert,
     });
     domain.addBasePathMapping(api, {stage: api.deploymentStage});
