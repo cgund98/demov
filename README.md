@@ -8,7 +8,7 @@
 
 _Demov is a simple application that lets you and your friends quickly decide what movie to watch. Hop into a party, pick your genre, and get swiping!_
 
-This repository contains the backend component of the application. For the frontend component, see [here](https://github.com/cgund98/demov-frontend).
+This repository contains the **backend** component of the application. For the frontend component, see [here](https://github.com/cgund98/demov-frontend).
 
 <img src="./docs/Swiping.png" alt="swiping" height="600"/>
 <img src="./docs/Stats.png" alt="stats" height="600"/>
