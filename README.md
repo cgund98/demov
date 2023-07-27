@@ -1,12 +1,24 @@
-# demov
+<div align="center">
+
+# Demov
+![Typescript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
+![AWS](https://img.shields.io/badge/Amazon_AWS-232F3E?style=for-the-badge&logo=amazon-aws&logoColor=white)
 [![Deploy](https://github.com/cgund98/demov/actions/workflows/deploy.yaml/badge.svg)](https://github.com/cgund98/demov/actions/workflows/deploy.yaml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-App designed to make deciding what to watch much easier. 
+_Demov is a simple application that lets you and your friends quickly decide what movie to watch. Hop into a party, pick your genre, and get swiping!_
 
-The application runs entirely on AWS, using serverless lambda functions for compute and DynamoDB as our primary state store. It is built and deployed using the CDK.
+This repository contains the backend component of the application. For the frontend component, see [here](https://github.com/cgund98/demov-frontend).
+
+<img src="./docs/Swiping.png" alt="swiping" height="600"/>
+<img src="./docs/Stats.png" alt="stats" height="600"/>
+</div>
 
 ## Getting Started
+
+The application runs entirely on AWS, using serverless lambda functions for compute and DynamoDB as the datastore.
+
+It is built and deployed using the CDK.
 
 ### Pre-requisites
 * Install Node.js verson 14.X
@@ -32,6 +44,22 @@ export DEPLOYMENT=nonprod
 ```bash
 npx cdk synth
 npx cdk deploy
+```
+
+The API should now be successfully deployed.
+
+## Project Structure
+```
+demov
+├── .github -- GitHub Actions workflows
+├── bin     -- CDK Entrypoint
+├── docs
+├── lib     -- CDK Service Stack
+├── python  -- Python scripts for sourcing movies from a CSV file
+└── src
+    ├── data    -- Mappers, repos, and entity definitions
+    ├── lambda  -- Lambda function entrypoints
+    └── util    -- Additional utilities
 ```
 
 ## Housekeeping
